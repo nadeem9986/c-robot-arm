@@ -1,0 +1,12 @@
+# PlatformIO Build Directories
+.pio/
+.pioenvs/
+.piolibdeps/
+.clangd/
+.vscode/
+.idea/
+
+# OS Temp Files
+.DS_Store
+Thumbs.db
+*.log
