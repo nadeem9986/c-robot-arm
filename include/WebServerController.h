@@ -6,6 +6,7 @@
 #include <WebServer.h>
 #include <ArduinoJson.h>
 #include "RobotArm.h"
+#include "config.h"
 
 class WebServerController {
 private:
@@ -24,7 +25,12 @@ private:
 public:
     WebServerController(RobotArm& robotArm, uint16_t port = WEB_SERVER_PORT);
 
-    void begin(const char* ssid = WIFI_AP_SSID, const char* password = WIFI_AP_PASS, bool startAP = true);
+    void begin(bool useStationMode = WIFI_MODE_STATION,
+               const char* staSSID = WIFI_STA_SSID,
+               const char* staPass = WIFI_STA_PASS,
+               const char* apSSID = WIFI_AP_SSID,
+               const char* apPass = WIFI_AP_PASS);
+    
     void handleClient();
 };
 

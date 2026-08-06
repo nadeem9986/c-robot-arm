@@ -13,7 +13,11 @@ bool RobotArm::begin() {
         Serial.println("[ROBOT ERROR] Servo controller failed to initialize!");
         return false;
     }
+#if ENABLE_AUTO_HOME_ON_BOOT
     goHome();
+#else
+    Serial.println("[ROBOT] Ready in passive mode. Waiting for Web / Serial movement commands.");
+#endif
     return true;
 }
 

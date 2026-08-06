@@ -1,6 +1,6 @@
 #include "WebServerController.h"
 
-// HTML UI embedded directly in Flash memory for standalone zero-dependency web interface
+// HTML UI embedded directly in Flash memory for standalone web interface
 const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
@@ -20,25 +20,25 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             --text-muted: #94a3b8;
             --border-color: #334155;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: var(--bg-color); color: var(--text-main); padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        .header { text-align: center; margin-bottom: 25px; }
-        .header h1 { font-size: 2rem; color: var(--accent-color); margin-bottom: 5px; }
-        .header p { color: var(--text-muted); font-size: 0.95rem; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { background: var(--bg-color); color: var(--text-main); padding: 15px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { font-size: 1.8rem; color: var(--accent-color); margin-bottom: 5px; }
+        .header p { color: var(--text-muted); font-size: 0.9rem; }
         
-        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; width: 100%; max-width: 1100px; }
-        .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        .card h2 { font-size: 1.2rem; color: var(--accent-color); margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; width: 100%; max-width: 1000px; }
+        .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .card h2 { font-size: 1.1rem; color: var(--accent-color); margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
         
-        .slider-group { margin-bottom: 18px; }
+        .slider-group { margin-bottom: 16px; }
         .slider-label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; }
         .slider-value { color: var(--accent-color); }
-        input[type=range] { width: 100%; height: 8px; border-radius: 4px; background: #334155; outline: none; -webkit-appearance: none; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-color); cursor: pointer; border: 2px solid #ffffff; }
+        input[type=range] { width: 100%; height: 10px; border-radius: 5px; background: #334155; outline: none; -webkit-appearance: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-color); cursor: pointer; border: 2px solid #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
         
         .btn-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px; }
-        .btn { padding: 10px 15px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; background: var(--accent-color); color: #000; transition: all 0.2s ease; text-align: center; }
-        .btn:hover { background: var(--accent-hover); color: #fff; transform: translateY(-2px); }
+        .btn { padding: 12px 15px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; background: var(--accent-color); color: #000; transition: all 0.2s ease; text-align: center; font-size: 0.95rem; }
+        .btn:active { transform: scale(0.98); }
         .btn-danger { background: var(--danger-color); color: #fff; }
         .btn-danger:hover { background: #dc2626; }
         .btn-success { background: var(--success-color); color: #fff; }
@@ -46,26 +46,26 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         .btn-full { grid-column: span 2; }
         
         .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; background: var(--success-color); color: white; }
-        .canvas-container { display: flex; justify-content: center; align-items: center; background: #090d16; border-radius: 8px; padding: 10px; height: 220px; }
+        .canvas-container { display: flex; justify-content: center; align-items: center; background: #090d16; border-radius: 8px; padding: 10px; height: 200px; }
         canvas { max-width: 100%; max-height: 100%; }
         
         .xyz-inputs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
         .input-box { display: flex; flex-direction: column; }
         .input-box label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; }
-        .input-box input { background: #0f172a; border: 1px solid var(--border-color); color: white; padding: 8px; border-radius: 6px; font-size: 0.9rem; text-align: center; }
+        .input-box input { background: #0f172a; border: 1px solid var(--border-color); color: white; padding: 10px; border-radius: 6px; font-size: 0.95rem; text-align: center; }
     </style>
 </head>
 <body>
 
     <div class="header">
         <h1>🤖 ESP32 Cantilever Robot Arm</h1>
-        <p>4-DOF Servo Control • PCA9685 Driver • Kinematics Engine</p>
+        <p>4-DOF Servo Control • Phone Web Interface</p>
     </div>
 
     <div class="container">
         <!-- JOINT CONTROL CARD -->
         <div class="card">
-            <h2>🕹️ Direct Joint Control</h2>
+            <h2>🕹️ Direct Servo Slider Control</h2>
             
             <div class="slider-group">
                 <div class="slider-label"><span>J1: Base Yaw</span> <span id="j1-val" class="slider-value">90°</span></div>
@@ -112,7 +112,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             </div>
             <button class="btn btn-full" onclick="sendIK()">📍 Move to Coordinate</button>
 
-            <h2 style="margin-top: 20px;">🎬 Teach & Repeat</h2>
+            <h2 style="margin-top: 20px;">🎬 Teach & Repeat Memory</h2>
             <div class="btn-grid">
                 <button class="btn btn-success" onclick="sendTeach('REC')">📸 Record Pose</button>
                 <button class="btn" onclick="sendTeach('PLAY')">▶️ Play Once</button>
@@ -125,11 +125,11 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <div class="card">
             <h2>📊 Robot Arm Visualizer & Safety</h2>
             <div class="canvas-container">
-                <canvas id="armCanvas" width="280" height="200"></canvas>
+                <canvas id="armCanvas" width="280" height="180"></canvas>
             </div>
             
             <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
-                <span>System Status: <span class="status-badge" id="sys-status">ONLINE</span></span>
+                <span>Status: <span class="status-badge" id="sys-status">READY</span></span>
                 <button class="btn btn-danger" onclick="toggleEStop()" id="estop-btn">🚨 EMERGENCY STOP</button>
             </div>
         </div>
@@ -137,6 +137,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
     <script>
         let isEStopped = false;
+        let lastSendTime = 0;
 
         function updateJoints() {
             let j1 = document.getElementById('j1').value;
@@ -151,7 +152,11 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
             drawArm(parseFloat(j2), parseFloat(j3), parseFloat(j4));
 
-            fetch(`/api/move?j1=${j1}&j2=${j2}&j3=${j3}&j4=${j4}`);
+            let now = Date.now();
+            if (now - lastSendTime > 50) {
+                lastSendTime = now;
+                fetch(`/api/move?j1=${j1}&j2=${j2}&j3=${j3}&j4=${j4}`);
+            }
         }
 
         function sendPreset(pose) {
@@ -177,7 +182,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             fetch(`/api/cmd?c=${action}`).then(() => {
                 isEStopped = !isEStopped;
                 document.getElementById('estop-btn').innerText = isEStopped ? '✅ RESET E-STOP' : '🚨 EMERGENCY STOP';
-                document.getElementById('sys-status').innerText = isEStopped ? 'HALTED' : 'ONLINE';
+                document.getElementById('sys-status').innerText = isEStopped ? 'HALTED' : 'READY';
                 document.getElementById('sys-status').style.background = isEStopped ? '#ef4444' : '#10b981';
             });
         }
@@ -204,8 +209,8 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             const originX = 140;
-            const originY = 170;
-            const scale = 0.6;
+            const originY = 150;
+            const scale = 0.55;
 
             const rad2 = (j2) * Math.PI / 180;
             const rad3 = (j2 + j3 - 90) * Math.PI / 180;
@@ -218,9 +223,9 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
             // Base
             ctx.fillStyle = '#475569';
-            ctx.fillRect(originX - 25, originY, 50, 15);
+            ctx.fillRect(originX - 25, originY, 50, 12);
             ctx.fillStyle = '#64748b';
-            ctx.fillRect(originX - 10, originY - l0, 20, l0);
+            ctx.fillRect(originX - 8, originY - l0, 16, l0);
 
             // Shoulder Joint
             const sX = originX;
@@ -240,7 +245,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
             // Draw Links
             ctx.strokeStyle = '#38bdf8';
-            ctx.lineWidth = 6;
+            ctx.lineWidth = 5;
             ctx.lineCap = 'round';
 
             // Shoulder Link (L1)
@@ -255,13 +260,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             // Draw Joint Circles
             ctx.fillStyle = '#ffffff';
             [ {x:sX, y:sY}, {x:eX, y:eY}, {x:wX, y:wY} ].forEach(pt => {
-                ctx.beginPath(); ctx.arc(pt.x, pt.y, 5, 0, 2*Math.PI); ctx.fill();
+                ctx.beginPath(); ctx.arc(pt.x, pt.y, 4, 0, 2*Math.PI); ctx.fill();
             });
         }
 
         window.onload = () => {
             fetchStatus();
-            setInterval(fetchStatus, 2000);
         };
     </script>
 </body>
@@ -271,25 +275,45 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 WebServerController::WebServerController(RobotArm& robotArm, uint16_t port)
     : server(port), robot(robotArm), apMode(true) {}
 
-void WebServerController::begin(const char* ssid, const char* password, bool startAP) {
-    apMode = startAP;
-    if (apMode) {
-        WiFi.mode(WIFI_AP);
-        WiFi.softAP(ssid, password);
-        IPAddress apIP = WiFi.softAPIP();
-        Serial.print("[WIFI] AP Started. Access Dashboard at: http://");
-        Serial.println(apIP);
-    } else {
+void WebServerController::begin(bool useStationMode, const char* staSSID, const char* staPass, const char* apSSID, const char* apPass) {
+    bool connected = false;
+
+    if (useStationMode && staSSID != NULL && strlen(staSSID) > 0 && strcmp(staSSID, "YOUR_WIFI_NAME") != 0) {
         WiFi.mode(WIFI_STA);
-        WiFi.begin(ssid, password);
-        Serial.print("[WIFI] Connecting to WiFi");
-        while (WiFi.status() != WL_CONNECTED) {
+        WiFi.begin(staSSID, staPass);
+        Serial.printf("[WIFI] Connecting to Wi-Fi Network '%s'", staSSID);
+
+        int attempts = 0;
+        while (WiFi.status() != WL_CONNECTED && attempts < 20) { // Wait up to 10 seconds
             delay(500);
             Serial.print(".");
+            attempts++;
         }
+
+        if (WiFi.status() == WL_CONNECTED) {
+            connected = true;
+            apMode = false;
+            Serial.println();
+            Serial.println("=================================================");
+            Serial.printf("  ✅ WI-FI CONNECTED TO: %s\n", staSSID);
+            Serial.printf("  👉 OPEN YOUR PHONE BROWSER TO: http://%s\n", WiFi.localIP().toString().c_str());
+            Serial.println("=================================================");
+        } else {
+            Serial.println("\n⚠️ Failed to connect to Wi-Fi station network. Falling back to Access Point Mode...");
+        }
+    }
+
+    if (!connected) {
+        WiFi.mode(WIFI_AP);
+        WiFi.softAP(apSSID, apPass);
+        apMode = true;
+        IPAddress apIP = WiFi.softAPIP();
         Serial.println();
-        Serial.print("[WIFI] Connected! IP Address: http://");
-        Serial.println(WiFi.localIP());
+        Serial.println("=================================================");
+        Serial.printf("  📡 ACCESS POINT MODE STARTED: %s\n", apSSID);
+        Serial.printf("  👉 CONNECT PHONE WI-FI TO: %s (Pass: %s)\n", apSSID, apPass);
+        Serial.printf("  👉 OPEN PHONE BROWSER TO: http://%s\n", apIP.toString().c_str());
+        Serial.println("=================================================");
     }
 
     setupRoutes();

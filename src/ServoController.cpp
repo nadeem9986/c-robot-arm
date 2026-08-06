@@ -30,8 +30,13 @@ bool ServoController::begin(uint8_t sdaPin, uint8_t sclPin, uint32_t i2cSpeed) {
     initialized = true;
     Serial.println("[SERVO] PCA9685 Servo Driver Initialized successfully.");
 
-    // Move to default initial position safely
+#if ENABLE_AUTO_HOME_ON_BOOT
+    Serial.println("[SERVO] Auto-Home enabled on boot.");
     setAllDirect(J1_DEFAULT_DEG, J2_DEFAULT_DEG, J3_DEFAULT_DEG, J4_DEFAULT_DEG);
+#else
+    Serial.println("[SERVO] Passive Boot: Servos will NOT move automatically until commanded via Web/Serial.");
+#endif
+
     lastUpdateMs = millis();
     return true;
 }

@@ -15,6 +15,7 @@ void printBanner() {
     Serial.println(" Servo Driver    : PCA9685 16-Channel 12-Bit PWM (I2C 0x40)");
     Serial.println(" Pinout Mapping  : SDA=GPIO21, SCL=GPIO22, OE=GPIO19");
     Serial.println(" Joint Channels  : J1=CH0, J2=CH1, J3=CH2, J4=CH3");
+    Serial.println(" Soft Boot Mode  : Passive (No auto-movement on boot)");
     Serial.println("========================================================\n");
 }
 
@@ -54,20 +55,19 @@ void setup() {
         }
     }
 
-    // 4. Initialize WiFi Access Point & Embedded Web Dashboard
-    webServer.begin(WIFI_AP_SSID, WIFI_AP_PASS, true);
+    // 4. Initialize Wi-Fi (Station Mode with AP Fallback) & Web Server
+    webServer.begin(WIFI_MODE_STATION, WIFI_STA_SSID, WIFI_STA_PASS, WIFI_AP_SSID, WIFI_AP_PASS);
 
     Serial.println("✅ SYSTEM READY!");
-    Serial.println("👉 Connect Wi-Fi to 'ESP32-RobotArm' (Password: robot1234)");
-    Serial.println("👉 Open browser to http://192.168.4.1 for interactive Web Control.");
-    Serial.println("👉 Or send serial commands (e.g. 'HOME', 'J 90 45 60 30', 'IK 120 0 100')\n");
+    Serial.println("👉 Servos will ONLY move when commanded from your phone/web browser.");
+    Serial.println("👉 Open your phone browser to the IP address printed above to control the arm.\n");
 }
 
 void loop() {
     // 1. Update smooth trajectory interpolation & teach playback
     robot.update();
 
-    // 2. Handle HTTP Web Dashboard Requests
+    // 2. Handle HTTP Web Dashboard Requests from phone/computer
     webServer.handleClient();
 
     // 3. Process Serial Commands from USB/UART
