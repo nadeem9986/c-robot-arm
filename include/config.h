@@ -11,8 +11,8 @@
 #define WIFI_MODE_STATION    true
 
 // ✏️ EDIT YOUR WI-FI DETAILS HERE:
-#define WIFI_STA_SSID        "YOUR_WIFI_NAME"        // Replace with your Wi-Fi Name / Hotspot
-#define WIFI_STA_PASS        "YOUR_WIFI_PASSWORD"    // Replace with your Wi-Fi Password
+#define WIFI_STA_SSID        "AMANAT"        // Replace with your Wi-Fi Name / Hotspot
+#define WIFI_STA_PASS        "amanath@123"   // Replace with your Wi-Fi Password
 
 // Fallback Access Point (AP) Details:
 #define WIFI_AP_SSID         "ESP32-RobotArm"

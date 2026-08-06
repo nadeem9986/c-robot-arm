@@ -32,13 +32,13 @@ public:
                float gripperL = LINK_GRIPPER_L3);
 
     // Forward Kinematics: Joint Angles (deg) -> Cartesian Position (X, Y, Z, Pitch)
-    Vector3D forwardKinematics(const JointAngles& angles, float& outPitchDeg);
+    Vector3D forwardKinematics(const JointAngles& angles, float& outPitchDeg) const;
 
     // Inverse Kinematics: Target (X, Y, Z) and Pitch Angle (deg) -> Joint Angles (deg)
-    JointAngles inverseKinematics(float x, float y, float z, float pitchDeg = 0.0f);
+    JointAngles inverseKinematics(float x, float y, float z, float pitchDeg = 0.0f) const;
 
     // Workspace check
-    bool isReachable(float x, float y, float z, float pitchDeg = 0.0f);
+    bool isReachable(float x, float y, float z, float pitchDeg = 0.0f) const;
     
     // Get max theoretical reach
     float getMaxReach() const { return l1 + l2 + l3; }

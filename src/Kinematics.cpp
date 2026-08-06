@@ -12,7 +12,7 @@
 Kinematics::Kinematics(float baseH, float shoulderL, float forearmL, float gripperL)
     : l0(baseH), l1(shoulderL), l2(forearmL), l3(gripperL) {}
 
-Vector3D Kinematics::forwardKinematics(const JointAngles& angles, float& outPitchDeg) {
+Vector3D Kinematics::forwardKinematics(const JointAngles& angles, float& outPitchDeg) const {
     Vector3D pos = {0.0f, 0.0f, 0.0f};
 
     float th1 = angles.j1 * DEG_TO_RAD;
@@ -31,7 +31,7 @@ Vector3D Kinematics::forwardKinematics(const JointAngles& angles, float& outPitc
     return pos;
 }
 
-JointAngles Kinematics::inverseKinematics(float x, float y, float z, float pitchDeg) {
+JointAngles Kinematics::inverseKinematics(float x, float y, float z, float pitchDeg) const {
     JointAngles result = {0, 0, 0, 0, false};
 
     // 1. Calculate Base Angle J1
@@ -88,7 +88,7 @@ JointAngles Kinematics::inverseKinematics(float x, float y, float z, float pitch
     return result;
 }
 
-bool Kinematics::isReachable(float x, float y, float z, float pitchDeg) {
+bool Kinematics::isReachable(float x, float y, float z, float pitchDeg) const {
     JointAngles res = inverseKinematics(x, y, z, pitchDeg);
     return res.isValid;
 }
