@@ -116,6 +116,28 @@ void ServoController::update() {
     }
 }
 
+JointState ServoController::getJointState(uint8_t jointIndex) const {
+    if (jointIndex >= 4) return {0, 0, 0, 180, 0, 0, false};
+    return joints[jointIndex];
+}
+
+bool ServoController::setJointLimits(uint8_t jointIndex, float minDeg, float maxDeg, float offsetDeg) {
+    if (jointIndex >= 4) return false;
+    if (minDeg >= maxDeg) return false;
+
+    joints[jointIndex].minAngle = constrain(minDeg, 0.0f, 180.0f);
+    joints[jointIndex].maxAngle = constrain(maxDeg, 0.0f, 180.0f);
+    joints[jointIndex].offsetAngle = offsetDeg;
+
+    // Re-constrain target and current angle if outside new bounds
+    joints[jointIndex].targetAngle = constrain(joints[jointIndex].targetAngle, joints[jointIndex].minAngle, joints[jointIndex].maxAngle);
+    joints[jointIndex].currentAngle = constrain(joints[jointIndex].currentAngle, joints[jointIndex].minAngle, joints[jointIndex].maxAngle);
+
+    Serial.printf("[LIMITS] Joint %d updated -> Min: %.1f°, Max: %.1f°, Offset: %.1f°\n", 
+                  jointIndex + 1, joints[jointIndex].minAngle, joints[jointIndex].maxAngle, joints[jointIndex].offsetAngle);
+    return true;
+}
+
 float ServoController::getJointCurrentAngle(uint8_t jointIndex) const {
     if (jointIndex >= 4) return 0.0f;
     return joints[jointIndex].currentAngle;

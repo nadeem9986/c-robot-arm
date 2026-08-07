@@ -31,7 +31,7 @@
 // =========================================================================
 #define I2C_SDA_PIN          21    // ESP32 I2C Data Pin (Connect to PCA9685 SDA)
 #define I2C_SCL_PIN          22    // ESP32 I2C Clock Pin (Connect to PCA9685 SCL)
-#define PCA9685_OE_PIN       19    // Output Enable (Active LOW, Optional)
+#define PCA9685_OE_PIN       -1    // OE Pin Disconnected (-1): PCA9685 defaults to Enabled via onboard pull-down
 #define STATUS_LED_PIN        2    // Onboard ESP32 Status LED
 #define EMERGENCY_STOP_PIN   15    // Optional Hardware E-Stop Button Pin
 

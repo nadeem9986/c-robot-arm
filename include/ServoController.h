@@ -47,7 +47,10 @@ public:
     // Call regularly in main loop for smooth trajectory interpolation
     void update();
 
-    // Getters
+    // Getters & Setters for Joint Limits & Offsets
+    JointState getJointState(uint8_t jointIndex) const;
+    bool setJointLimits(uint8_t jointIndex, float minDeg, float maxDeg, float offsetDeg = 0.0f);
+
     float getJointCurrentAngle(uint8_t jointIndex) const;
     float getJointTargetAngle(uint8_t jointIndex) const;
     bool isMoving() const;

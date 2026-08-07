@@ -173,6 +173,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             margin-bottom: 8px;
         }
 
+        .limit-subtext {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-left: 6px;
+        }
+
         .value-tag {
             font-family: 'JetBrains Mono', monospace, monospace;
             font-weight: 700;
@@ -192,7 +198,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
         .step-btn {
             background: #1e293b;
-            border: 1px solid var(--border-color);
+            border: 1px solid rgba(255,255,255,0.08);
             color: var(--text-primary);
             width: 28px;
             height: 28px;
@@ -340,6 +346,46 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             box-shadow: 0 0 8px var(--accent-glow);
         }
 
+        /* SERVO LIMIT CONFIGURATION TABLE */
+        .limits-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            font-size: 0.8rem;
+        }
+
+        .limits-table th {
+            text-align: center;
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            text-transform: uppercase;
+            font-size: 0.7rem;
+        }
+
+        .limits-table td {
+            padding: 6px 4px;
+            text-align: center;
+        }
+
+        .limits-table input {
+            width: 60px;
+            background: var(--input-bg);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+            color: var(--accent-cyan);
+            font-family: 'JetBrains Mono', monospace, monospace;
+            font-size: 0.82rem;
+            padding: 4px;
+            text-align: center;
+            outline: none;
+        }
+
+        .limits-table input:focus {
+            border-color: var(--accent-cyan);
+        }
+
         /* CANVAS VISUALIZER */
         .canvas-card {
             background: #060911;
@@ -441,7 +487,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <!-- JOINT 1 -->
             <div class="control-item">
                 <div class="control-label">
-                    <span>J1: BASE YAW</span>
+                    <span>J1: BASE YAW <span class="limit-subtext" id="j1-limit-tag">(0° - 180°)</span></span>
                     <span class="value-tag" id="j1-val">90°</span>
                 </div>
                 <div class="range-wrapper">
@@ -454,7 +500,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <!-- JOINT 2 -->
             <div class="control-item">
                 <div class="control-label">
-                    <span>J2: SHOULDER PITCH</span>
+                    <span>J2: SHOULDER PITCH <span class="limit-subtext" id="j2-limit-tag">(15° - 165°)</span></span>
                     <span class="value-tag" id="j2-val">90°</span>
                 </div>
                 <div class="range-wrapper">
@@ -467,7 +513,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <!-- JOINT 3 -->
             <div class="control-item">
                 <div class="control-label">
-                    <span>J3: ELBOW PITCH</span>
+                    <span>J3: ELBOW PITCH <span class="limit-subtext" id="j3-limit-tag">(10° - 170°)</span></span>
                     <span class="value-tag" id="j3-val">90°</span>
                 </div>
                 <div class="range-wrapper">
@@ -480,7 +526,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <!-- JOINT 4 -->
             <div class="control-item">
                 <div class="control-label">
-                    <span>J4: WRIST / GRIPPER</span>
+                    <span>J4: WRIST / GRIPPER <span class="limit-subtext" id="j4-limit-tag">(0° - 120°)</span></span>
                     <span class="value-tag" id="j4-val">60°</span>
                 </div>
                 <div class="range-wrapper">
@@ -497,8 +543,55 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             </div>
         </div>
 
-        <!-- PANEL 2: INVERSE KINEMATICS & TEACH MEMORY -->
+        <!-- PANEL 2: DYNAMIC SERVO LIMITS & CALIBRATION -->
         <div class="panel">
+            <div class="panel-header">
+                <h2>⚙️ Servo Degree Limits</h2>
+                <span class="value-tag">SAFETY CONSTRAINTS</span>
+            </div>
+
+            <table class="limits-table">
+                <thead>
+                    <tr>
+                        <th>JOINT</th>
+                        <th>MIN (°)</th>
+                        <th>MAX (°)</th>
+                        <th>TRIM OFFSET</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="color:var(--accent-cyan); font-weight:600;">J1 Base</td>
+                        <td><input type="number" id="l-j1-min" value="0" min="0" max="180"></td>
+                        <td><input type="number" id="l-j1-max" value="180" min="0" max="180"></td>
+                        <td><input type="number" id="l-j1-off" value="0" min="-30" max="30"></td>
+                    </tr>
+                    <tr>
+                        <td style="color:var(--accent-indigo); font-weight:600;">J2 Shoulder</td>
+                        <td><input type="number" id="l-j2-min" value="15" min="0" max="180"></td>
+                        <td><input type="number" id="l-j2-max" value="165" min="0" max="180"></td>
+                        <td><input type="number" id="l-j2-off" value="0" min="-30" max="30"></td>
+                    </tr>
+                    <tr>
+                        <td style="color:var(--accent-emerald); font-weight:600;">J3 Elbow</td>
+                        <td><input type="number" id="l-j3-min" value="10" min="0" max="180"></td>
+                        <td><input type="number" id="l-j3-max" value="170" min="0" max="180"></td>
+                        <td><input type="number" id="l-j3-off" value="0" min="-30" max="30"></td>
+                    </tr>
+                    <tr>
+                        <td style="color:var(--accent-rose); font-weight:600;">J4 Wrist</td>
+                        <td><input type="number" id="l-j4-min" value="0" min="0" max="180"></td>
+                        <td><input type="number" id="l-j4-max" value="120" min="0" max="180"></td>
+                        <td><input type="number" id="l-j4-off" value="0" min="-30" max="30"></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="btn-grid-4" style="margin-bottom: 20px;">
+                <button class="btn-modern btn-primary" onclick="saveServoLimits()">💾 SAVE LIMITS</button>
+                <button class="btn-modern" onclick="resetServoLimits()">🔄 RESET DEFAULTS</button>
+            </div>
+
             <div class="panel-header">
                 <h2>Cartesian Solver (XYZ)</h2>
                 <span class="value-tag">ANALYTIC IK</span>
@@ -518,22 +611,10 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                     <input type="number" id="ik-z" value="100">
                 </div>
             </div>
-            <button class="btn-modern btn-primary" onclick="sendIK()" style="margin-bottom: 20px;">📍 EXECUTE CARTESIAN MOVE</button>
-
-            <div class="panel-header">
-                <h2>Teach & Repeat Engine</h2>
-                <span class="value-tag" id="teach-count">0 POSES</span>
-            </div>
-
-            <div class="btn-grid-4">
-                <button class="btn-modern btn-emerald" onclick="sendTeach('REC')">📸 RECORD POSE</button>
-                <button class="btn-modern" onclick="sendTeach('PLAY')">▶️ PLAY ONCE</button>
-                <button class="btn-modern" onclick="sendTeach('LOOP')">🔄 LOOP PLAY</button>
-                <button class="btn-modern btn-rose" onclick="sendTeach('CLEAR')">🗑️ CLEAR MEMORY</button>
-            </div>
+            <button class="btn-modern btn-primary" onclick="sendIK()">📍 EXECUTE CARTESIAN MOVE</button>
         </div>
 
-        <!-- PANEL 3: 2D VISUALIZER & SAFETY CONSOLE -->
+        <!-- PANEL 3: 2D VISUALIZER & TEACH MEMORY -->
         <div class="panel">
             <div class="panel-header">
                 <h2>Live Telemetry Visualizer</h2>
@@ -543,6 +624,18 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <div class="canvas-card">
                 <div class="canvas-overlay" id="coords-overlay">X: 120.0 | Y: 0.0 | Z: 100.0</div>
                 <canvas id="armCanvas" width="320" height="220"></canvas>
+            </div>
+
+            <div class="panel-header" style="margin-top: 15px;">
+                <h2>Teach & Repeat Engine</h2>
+                <span class="value-tag" id="teach-count">0 POSES</span>
+            </div>
+
+            <div class="btn-grid-4">
+                <button class="btn-modern btn-emerald" onclick="sendTeach('REC')">📸 RECORD POSE</button>
+                <button class="btn-modern" onclick="sendTeach('PLAY')">▶️ PLAY ONCE</button>
+                <button class="btn-modern" onclick="sendTeach('LOOP')">🔄 LOOP PLAY</button>
+                <button class="btn-modern btn-rose" onclick="sendTeach('CLEAR')">🗑️ CLEAR MEMORY</button>
             </div>
 
             <div class="estop-container">
@@ -582,6 +675,65 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 lastSendTime = now;
                 fetch(`/api/move?j1=${j1}&j2=${j2}&j3=${j3}&j4=${j4}`);
             }
+        }
+
+        function applyLimitsToSliders(data) {
+            // Update Joint 1
+            document.getElementById('j1').min = data.j1_min;
+            document.getElementById('j1').max = data.j1_max;
+            document.getElementById('j1-limit-tag').innerText = `(${data.j1_min}° - ${data.j1_max}°)`;
+            document.getElementById('l-j1-min').value = data.j1_min;
+            document.getElementById('l-j1-max').value = data.j1_max;
+            document.getElementById('l-j1-off').value = data.j1_off;
+
+            // Update Joint 2
+            document.getElementById('j2').min = data.j2_min;
+            document.getElementById('j2').max = data.j2_max;
+            document.getElementById('j2-limit-tag').innerText = `(${data.j2_min}° - ${data.j2_max}°)`;
+            document.getElementById('l-j2-min').value = data.j2_min;
+            document.getElementById('l-j2-max').value = data.j2_max;
+            document.getElementById('l-j2-off').value = data.j2_off;
+
+            // Update Joint 3
+            document.getElementById('j3').min = data.j3_min;
+            document.getElementById('j3').max = data.j3_max;
+            document.getElementById('j3-limit-tag').innerText = `(${data.j3_min}° - ${data.j3_max}°)`;
+            document.getElementById('l-j3-min').value = data.j3_min;
+            document.getElementById('l-j3-max').value = data.j3_max;
+            document.getElementById('l-j3-off').value = data.j3_off;
+
+            // Update Joint 4
+            document.getElementById('j4').min = data.j4_min;
+            document.getElementById('j4').max = data.j4_max;
+            document.getElementById('j4-limit-tag').innerText = `(${data.j4_min}° - ${data.j4_max}°)`;
+            document.getElementById('l-j4-min').value = data.j4_min;
+            document.getElementById('l-j4-max').value = data.j4_max;
+            document.getElementById('l-j4-off').value = data.j4_off;
+        }
+
+        function saveServoLimits() {
+            let url = `/api/limits?` +
+                `j1_min=${document.getElementById('l-j1-min').value}&j1_max=${document.getElementById('l-j1-max').value}&j1_off=${document.getElementById('l-j1-off').value}&` +
+                `j2_min=${document.getElementById('l-j2-min').value}&j2_max=${document.getElementById('l-j2-max').value}&j2_off=${document.getElementById('l-j2-off').value}&` +
+                `j3_min=${document.getElementById('l-j3-min').value}&j3_max=${document.getElementById('l-j3-max').value}&j3_off=${document.getElementById('l-j3-off').value}&` +
+                `j4_min=${document.getElementById('l-j4-min').value}&j4_max=${document.getElementById('l-j4-max').value}&j4_off=${document.getElementById('l-j4-off').value}`;
+
+            fetch(url).then(res => res.json()).then(data => {
+                if (data.success) {
+                    alert("✅ Servo Degree Limits Saved Successfully!");
+                    fetchStatus();
+                } else {
+                    alert("❌ Invalid limits! Ensure Min < Max.");
+                }
+            });
+        }
+
+        function resetServoLimits() {
+            document.getElementById('l-j1-min').value = 0; document.getElementById('l-j1-max').value = 180; document.getElementById('l-j1-off').value = 0;
+            document.getElementById('l-j2-min').value = 15; document.getElementById('l-j2-max').value = 165; document.getElementById('l-j2-off').value = 0;
+            document.getElementById('l-j3-min').value = 10; document.getElementById('l-j3-max').value = 170; document.getElementById('l-j3-off').value = 0;
+            document.getElementById('l-j4-min').value = 0; document.getElementById('l-j4-max').value = 120; document.getElementById('l-j4-off').value = 0;
+            saveServoLimits();
         }
 
         function sendPreset(pose) {
@@ -641,6 +793,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 document.getElementById('teach-count').innerText = data.teachCount + ' POSES';
                 document.getElementById('coords-overlay').innerText = `X: ${data.x.toFixed(1)} | Y: ${data.y.toFixed(1)} | Z: ${data.z.toFixed(1)}`;
 
+                applyLimitsToSliders(data);
                 drawArm(data.j2, data.j3, data.j4);
             });
         }
@@ -795,6 +948,7 @@ void WebServerController::setupRoutes() {
     server.on("/api/move", HTTP_GET, std::bind(&WebServerController::handleApiMoveJoints, this));
     server.on("/api/ik", HTTP_GET, std::bind(&WebServerController::handleApiMoveIK, this));
     server.on("/api/teach", HTTP_GET, std::bind(&WebServerController::handleApiTeach, this));
+    server.on("/api/limits", HTTP_GET, std::bind(&WebServerController::handleApiSetLimits, this));
     server.on("/api/cmd", HTTP_GET, [this]() {
         if (server.hasArg("c")) {
             String res = robot.executeCommand(server.arg("c"));
@@ -812,17 +966,24 @@ void WebServerController::handleRoot() {
 void WebServerController::handleApiStatus() {
     JointAngles j = robot.getCurrentJoints();
     Vector3D xyz = robot.getCurrentCartesian();
+    ServoController& sc = robot.getServoController();
+
+    JointState s1 = sc.getJointState(0);
+    JointState s2 = sc.getJointState(1);
+    JointState s3 = sc.getJointState(2);
+    JointState s4 = sc.getJointState(3);
 
     JsonDocument doc;
-    doc["j1"] = j.j1;
-    doc["j2"] = j.j2;
-    doc["j3"] = j.j3;
-    doc["j4"] = j.j4;
+    doc["j1"] = j.j1; doc["j1_min"] = s1.minAngle; doc["j1_max"] = s1.maxAngle; doc["j1_off"] = s1.offsetAngle;
+    doc["j2"] = j.j2; doc["j2_min"] = s2.minAngle; doc["j2_max"] = s2.maxAngle; doc["j2_off"] = s2.offsetAngle;
+    doc["j3"] = j.j3; doc["j3_min"] = s3.minAngle; doc["j3_max"] = s3.maxAngle; doc["j3_off"] = s3.offsetAngle;
+    doc["j4"] = j.j4; doc["j4_min"] = s4.minAngle; doc["j4_max"] = s4.maxAngle; doc["j4_off"] = s4.offsetAngle;
+
     doc["x"] = xyz.x;
     doc["y"] = xyz.y;
     doc["z"] = xyz.z;
-    doc["isMoving"] = robot.getServoController().isMoving();
-    doc["isEStopped"] = robot.getServoController().isEStopped();
+    doc["isMoving"] = sc.isMoving();
+    doc["isEStopped"] = sc.isEStopped();
     doc["teachCount"] = robot.getTeachCount();
 
     String response;
@@ -858,6 +1019,30 @@ void WebServerController::handleApiMoveIK() {
         }
     } else {
         server.send(400, "application/json", "{\"success\":false,\"error\":\"Missing XYZ parameters\"}");
+    }
+}
+
+void WebServerController::handleApiSetLimits() {
+    ServoController& sc = robot.getServoController();
+    bool ok = true;
+
+    if (server.hasArg("j1_min") && server.hasArg("j1_max")) {
+        ok &= sc.setJointLimits(0, server.arg("j1_min").toFloat(), server.arg("j1_max").toFloat(), server.hasArg("j1_off") ? server.arg("j1_off").toFloat() : 0.0f);
+    }
+    if (server.hasArg("j2_min") && server.hasArg("j2_max")) {
+        ok &= sc.setJointLimits(1, server.arg("j2_min").toFloat(), server.arg("j2_max").toFloat(), server.hasArg("j2_off") ? server.arg("j2_off").toFloat() : 0.0f);
+    }
+    if (server.hasArg("j3_min") && server.hasArg("j3_max")) {
+        ok &= sc.setJointLimits(2, server.arg("j3_min").toFloat(), server.arg("j3_max").toFloat(), server.hasArg("j3_off") ? server.arg("j3_off").toFloat() : 0.0f);
+    }
+    if (server.hasArg("j4_min") && server.hasArg("j4_max")) {
+        ok &= sc.setJointLimits(3, server.arg("j4_min").toFloat(), server.arg("j4_max").toFloat(), server.hasArg("j4_off") ? server.arg("j4_off").toFloat() : 0.0f);
+    }
+
+    if (ok) {
+        server.send(200, "application/json", "{\"success\":true}");
+    } else {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid joint limit range\"}");
     }
 }
 

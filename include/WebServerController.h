@@ -20,7 +20,7 @@ private:
     void handleApiMoveJoints();
     void handleApiMoveIK();
     void handleApiTeach();
-    void handleApiEStop();
+    void handleApiSetLimits();
 
 public:
     WebServerController(RobotArm& robotArm, uint16_t port = WEB_SERVER_PORT);
