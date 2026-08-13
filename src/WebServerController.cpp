@@ -1148,7 +1148,8 @@ void WebServerController::handleApiMoveJoints() {
         float j2 = server.arg("j2").toFloat();
         float j3 = server.arg("j3").toFloat();
         float j4 = server.arg("j4").toFloat();
-        robot.moveJoints(j1, j2, j3, j4);
+        bool direct = server.hasArg("direct") ? (server.arg("direct") == "1" || server.arg("direct") == "true") : true;
+        robot.moveJoints(j1, j2, j3, j4, direct);
         server.send(200, "application/json", "{\"success\":true}");
     } else {
         server.send(400, "application/json", "{\"success\":false,\"error\":\"Missing parameters\"}");

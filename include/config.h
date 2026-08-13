@@ -86,9 +86,10 @@
 #define LINK_GRIPPER_L3       65.0f  // Gripper / tool length (mm)
 
 // =========================================================================
-// 🚀 7. MOTION PROFILE
+// 🚀 7. MOTION PROFILE & DUAL-CORE RTOS CONFIG
 // =========================================================================
-#define DEFAULT_MAX_SPEED_DPS 60.0f  // Speed limit (Degrees per second)
-#define MAX_TEACH_POSES       50    // Max keyframe positions for Teach & Repeat
+#define DEFAULT_MAX_SPEED_DPS 120.0f // Increased speed limit for responsive cantilever torque
+#define MAX_TEACH_POSES       50     // Max keyframe positions for Teach & Repeat
+#define SYSTEM_RUN_DUAL_CORE  true   // Enable FreeRTOS Core 0 (Wi-Fi/Web) + Core 1 (Motion)
 
 #endif // CONFIG_H

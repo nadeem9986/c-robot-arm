@@ -7,16 +7,56 @@
 RobotArm robot;
 WebServerController webServer(robot, WEB_SERVER_PORT);
 
+// FreeRTOS Task Handles for ESP32 Dual Core Multitasking
+TaskHandle_t WebTaskHandle = NULL;
+TaskHandle_t MotionTaskHandle = NULL;
+
 void printBanner() {
     Serial.println("\n========================================================");
-    Serial.println("   🤖 ESP32 CANTILEVER 4-DOF ROBOT ARM CONTROLLER v1.0   ");
+    Serial.println("   🤖 ESP32 CANTILEVER 4-DOF ROBOT ARM CONTROLLER v2.0   ");
     Serial.println("========================================================");
-    Serial.println(" Target Hardware : ESP32 Dev Module (38 Pins)");
+    Serial.println(" Target Hardware : ESP32 Dev Module Dual-Core (38 Pins)");
+    Serial.println(" Dual Core Engine: CORE 0 = Wi-Fi/Web | CORE 1 = Motion");
     Serial.println(" Servo Driver    : PCA9685 16-Channel 12-Bit PWM (I2C 0x40)");
-    Serial.println(" Pinout Mapping  : SDA=GPIO21, SCL=GPIO22, OE=GPIO19");
+    Serial.println(" Pinout Mapping  : SDA=GPIO21, SCL=GPIO22");
     Serial.println(" Joint Channels  : J1=CH0, J2=CH1, J3=CH2, J4=CH3");
     Serial.println(" Soft Boot Mode  : Passive (No auto-movement on boot)");
     Serial.println("========================================================\n");
+}
+
+// -------------------------------------------------------------------------
+// 🧠 CORE 0 TASK: Wi-Fi, HTTP Server & Network Telemetry
+// -------------------------------------------------------------------------
+void webServerTask(void *pvParameters) {
+    Serial.printf("[FREE-RTOS] Web Server Task pinned to CORE %d\n", xPortGetCoreID());
+    for (;;) {
+        webServer.handleClient();
+        vTaskDelay(5 / portTICK_PERIOD_MS); // Yield 5ms to Prevent WDT Reset
+    }
+}
+
+// -------------------------------------------------------------------------
+// ⚡ CORE 1 TASK: High-Precision 50Hz Real-Time Servo Trajectory Control
+// -------------------------------------------------------------------------
+void motionControlTask(void *pvParameters) {
+    Serial.printf("[FREE-RTOS] Real-Time Motion Task pinned to CORE %d\n", xPortGetCoreID());
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    const TickType_t xFrequency = pdMS_TO_TICKS(10); // 100Hz (10ms) High-precision tick
+
+    for (;;) {
+        robot.update();
+
+#ifdef EMERGENCY_STOP_PIN
+        if (digitalRead(EMERGENCY_STOP_PIN) == LOW) {
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+            if (digitalRead(EMERGENCY_STOP_PIN) == LOW) {
+                robot.getServoController().emergencyStop();
+            }
+        }
+#endif
+
+        vTaskDelayUntil(&xLastWakeTime, xFrequency);
+    }
 }
 
 void processSerialCommands() {
@@ -58,31 +98,42 @@ void setup() {
     // 4. Initialize Wi-Fi (Station Mode with AP Fallback) & Web Server
     webServer.begin(WIFI_MODE_STATION, WIFI_STA_SSID, WIFI_STA_PASS, WIFI_AP_SSID, WIFI_AP_PASS);
 
-    Serial.println("✅ SYSTEM READY!");
-    Serial.println("👉 Servos will ONLY move when commanded from your phone/web browser.");
-    Serial.println("👉 Open your phone browser to the IP address printed above to control the arm.\n");
+    // 5. Spawn FreeRTOS Dual-Core Tasks
+#if SYSTEM_RUN_DUAL_CORE
+    Serial.println("[SYSTEM] Spawning FreeRTOS Dual-Core Architecture...");
+
+    // Task 1: Web Server on Core 0
+    xTaskCreatePinnedToCore(
+        webServerTask,
+        "WebServerTask",
+        8192,
+        NULL,
+        1,              // Priority 1
+        &WebTaskHandle,
+        0               // CORE 0
+    );
+
+    // Task 2: Real-time Servo Motion Control on Core 1
+    xTaskCreatePinnedToCore(
+        motionControlTask,
+        "MotionTask",
+        8192,
+        NULL,
+        2,              // Higher Priority 2 for deterministic timing
+        &MotionTaskHandle,
+        1               // CORE 1
+    );
+
+    Serial.println("✅ DUAL-CORE MULTITASKING INITIALIZED SUCCESSFULLY!");
+#endif
+
+    Serial.println("=================================================");
+    Serial.println("  👉 SYSTEM READY & OPERATING ON BOTH CPU CORES!");
+    Serial.println("=================================================\n");
 }
 
 void loop() {
-    // 1. Update smooth trajectory interpolation & teach playback
-    robot.update();
-
-    // 2. Handle HTTP Web Dashboard Requests from phone/computer
-    webServer.handleClient();
-
-    // 3. Process Serial Commands from USB/UART
+    // If Dual-Core is active, loop() only needs to handle Serial & WDT
     processSerialCommands();
-
-    // 4. E-Stop Button check
-#ifdef EMERGENCY_STOP_PIN
-    if (digitalRead(EMERGENCY_STOP_PIN) == LOW) {
-        delay(20); // Debounce
-        if (digitalRead(EMERGENCY_STOP_PIN) == LOW) {
-            robot.getServoController().emergencyStop();
-        }
-    }
-#endif
-
-    // Yield control to ESP32 RTOS background tasks
-    vTaskDelay(1 / portTICK_PERIOD_MS);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
 }
