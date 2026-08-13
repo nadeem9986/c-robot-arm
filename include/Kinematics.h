@@ -11,19 +11,19 @@ struct Vector3D {
 };
 
 struct JointAngles {
-    float j1; // Base Yaw (degrees)
-    float j2; // Shoulder Pitch (degrees)
-    float j3; // Elbow Pitch (degrees)
-    float j4; // Wrist Pitch / Gripper (degrees)
+    float j1; // Base Yaw (degrees: 0 to 180)
+    float j2; // Shoulder Boom Angle relative to ground (degrees: 15 to 165)
+    float j3; // Forearm Linkage Angle relative to ground (degrees: 10 to 170)
+    float j4; // Gripper Claw Opening Width (degrees: 0 = Closed, 120 = Open)
     bool isValid;
 };
 
 class Kinematics {
 private:
-    float l0; // Base height
-    float l1; // Shoulder link length
-    float l2; // Forearm link length
-    float l3; // Gripper/Tool length
+    float l0; // Base height to shoulder axis (mm)
+    float l1; // Primary lower boom link length (mm)
+    float l2; // Upper forearm link length (mm)
+    float l3; // Gripper / claw extension length (mm)
 
 public:
     Kinematics(float baseH = LINK_BASE_HEIGHT_L0, 
@@ -31,16 +31,16 @@ public:
                float forearmL = LINK_FOREARM_L2, 
                float gripperL = LINK_GRIPPER_L3);
 
-    // Forward Kinematics: Joint Angles (deg) -> Cartesian Position (X, Y, Z, Pitch)
+    // Forward Kinematics for MeArm Parallel Linkage Architecture
     Vector3D forwardKinematics(const JointAngles& angles, float& outPitchDeg) const;
 
-    // Inverse Kinematics: Target (X, Y, Z) and Pitch Angle (deg) -> Joint Angles (deg)
+    // Inverse Kinematics for MeArm Parallel Linkage Architecture
     JointAngles inverseKinematics(float x, float y, float z, float pitchDeg = 0.0f) const;
 
-    // Workspace check
+    // Workspace reachability check
     bool isReachable(float x, float y, float z, float pitchDeg = 0.0f) const;
     
-    // Get max theoretical reach
+    // Get max theoretical reach in mm
     float getMaxReach() const { return l1 + l2 + l3; }
 };
 

@@ -68,8 +68,8 @@
 #define J3_DEFAULT_DEG       90.0f
 
 #define J4_MIN_DEG           0.0f
-#define J4_MAX_DEG           120.0f
-#define J4_DEFAULT_DEG       60.0f
+#define J4_MAX_DEG           17.0f
+#define J4_DEFAULT_DEG       10.0f
 
 // Calibration Zero-Offset (Degrees)
 #define J1_OFFSET_DEG        0.0f

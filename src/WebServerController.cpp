@@ -1,13 +1,13 @@
 #include "WebServerController.h"
 
-// Professional Industrial Glassmorphism Dashboard UI embedded directly in Flash memory
+// Professional Industrial Glassmorphism Dashboard UI with 3D WebGL Robot Model
 const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ESP32 4-DOF Robotic Arm Console</title>
+    <title>MeArm 4-DOF 3D Robot Console</title>
     <style>
         :root {
             --bg-dark: #090d16;
@@ -40,7 +40,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             align-items: center;
         }
 
-        /* TOP NAVIGATION & TELEMETRY BAR */
+        /* TOP NAVIGATION TELEMETRY BAR */
         .top-bar {
             width: 100%;
             max-width: 1200px;
@@ -386,22 +386,24 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             border-color: var(--accent-cyan);
         }
 
-        /* CANVAS VISUALIZER */
+        /* 3D CANVAS CONTAINER */
         .canvas-card {
             background: #060911;
             border: 1px solid rgba(56, 189, 248, 0.2);
             border-radius: 12px;
             position: relative;
-            height: 220px;
+            height: 300px;
             display: flex;
             justify-content: center;
             align-items: center;
             overflow: hidden;
+            box-shadow: inset 0 0 25px rgba(0,0,0,0.8);
         }
 
-        canvas {
+        #webgl3dCanvas {
             width: 100%;
             height: 100%;
+            display: block;
         }
 
         .canvas-overlay {
@@ -410,11 +412,26 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             left: 8px;
             font-size: 0.7rem;
             font-family: monospace;
-            color: var(--text-muted);
-            background: rgba(0, 0, 0, 0.5);
+            color: var(--accent-cyan);
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(56, 189, 248, 0.3);
             padding: 4px 8px;
             border-radius: 4px;
             pointer-events: none;
+            z-index: 10;
+        }
+
+        .canvas-hint {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            background: rgba(0,0,0,0.6);
+            padding: 3px 6px;
+            border-radius: 4px;
+            pointer-events: none;
+            z-index: 10;
         }
 
         /* E-STOP BUTTON */
@@ -457,6 +474,9 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             .dashboard-grid { grid-template-columns: 1fr; }
         }
     </style>
+    <!-- Three.js 3D WebGL Library & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
 
@@ -464,8 +484,8 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     <div class="top-bar">
         <div class="brand-title">
             <div class="status-dot" id="status-dot"></div>
-            <h1>CYBER-ARM 4-DOF</h1>
-            <span class="brand-badge">ESP32 INDUSTRIAL</span>
+            <h1>MeArm 4-DOF PARALLEL 3D CONSOLE</h1>
+            <span class="brand-badge">ACRYLIC CAD MODEL</span>
         </div>
         <div class="telemetry-group">
             <span>IP: <strong id="net-ip" style="color:var(--accent-cyan);">192.168.31.174</strong></span>
@@ -500,7 +520,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <!-- JOINT 2 -->
             <div class="control-item">
                 <div class="control-label">
-                    <span>J2: SHOULDER PITCH <span class="limit-subtext" id="j2-limit-tag">(15° - 165°)</span></span>
+                    <span>J2: SHOULDER BOOM <span class="limit-subtext" id="j2-limit-tag">(15° - 165°)</span></span>
                     <span class="value-tag" id="j2-val">90°</span>
                 </div>
                 <div class="range-wrapper">
@@ -513,7 +533,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <!-- JOINT 3 -->
             <div class="control-item">
                 <div class="control-label">
-                    <span>J3: ELBOW PITCH <span class="limit-subtext" id="j3-limit-tag">(10° - 170°)</span></span>
+                    <span>J3: FOREARM PARALLEL BAR <span class="limit-subtext" id="j3-limit-tag">(10° - 170°)</span></span>
                     <span class="value-tag" id="j3-val">90°</span>
                 </div>
                 <div class="range-wrapper">
@@ -526,12 +546,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <!-- JOINT 4 -->
             <div class="control-item">
                 <div class="control-label">
-                    <span>J4: WRIST / GRIPPER <span class="limit-subtext" id="j4-limit-tag">(0° - 120°)</span></span>
-                    <span class="value-tag" id="j4-val">60°</span>
+                    <span>J4: GRIPPER CLAW <span class="limit-subtext" id="j4-limit-tag">(0° - 17°)</span></span>
+                    <span class="value-tag" id="j4-val">10°</span>
                 </div>
                 <div class="range-wrapper">
                     <button class="step-btn" onclick="stepJoint('j4', -2)">-</button>
-                    <input type="range" id="j4" min="0" max="120" value="60" oninput="onSliderChange()">
+                    <input type="range" id="j4" min="0" max="17" value="10" oninput="onSliderChange()">
                     <button class="step-btn" onclick="stepJoint('j4', 2)">+</button>
                 </div>
             </div>
@@ -573,15 +593,15 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                         <td><input type="number" id="l-j2-off" value="0" min="-30" max="30"></td>
                     </tr>
                     <tr>
-                        <td style="color:var(--accent-emerald); font-weight:600;">J3 Elbow</td>
+                        <td style="color:var(--accent-emerald); font-weight:600;">J3 Elbow Bar</td>
                         <td><input type="number" id="l-j3-min" value="10" min="0" max="180"></td>
                         <td><input type="number" id="l-j3-max" value="170" min="0" max="180"></td>
                         <td><input type="number" id="l-j3-off" value="0" min="-30" max="30"></td>
                     </tr>
                     <tr>
-                        <td style="color:var(--accent-rose); font-weight:600;">J4 Wrist</td>
-                        <td><input type="number" id="l-j4-min" value="0" min="0" max="180"></td>
-                        <td><input type="number" id="l-j4-max" value="120" min="0" max="180"></td>
+                        <td style="color:var(--accent-rose); font-weight:600;">J4 Gripper</td>
+                        <td><input type="number" id="l-j4-min" value="0" min="0" max="17"></td>
+                        <td><input type="number" id="l-j4-max" value="17" min="0" max="17"></td>
                         <td><input type="number" id="l-j4-off" value="0" min="-30" max="30"></td>
                     </tr>
                 </tbody>
@@ -594,7 +614,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
             <div class="panel-header">
                 <h2>Cartesian Solver (XYZ)</h2>
-                <span class="value-tag">ANALYTIC IK</span>
+                <span class="value-tag">MEARM IK</span>
             </div>
 
             <div class="ik-grid">
@@ -614,16 +634,17 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <button class="btn-modern btn-primary" onclick="sendIK()">📍 EXECUTE CARTESIAN MOVE</button>
         </div>
 
-        <!-- PANEL 3: 2D VISUALIZER & TEACH MEMORY -->
+        <!-- PANEL 3: 3D REAL-TIME MECHANICAL VISUALIZER & TEACH MEMORY -->
         <div class="panel">
             <div class="panel-header">
-                <h2>Live Telemetry Visualizer</h2>
-                <span class="value-tag" style="color:var(--accent-emerald)">ONLINE</span>
+                <h2>Real-Time 3D Robot Model</h2>
+                <span class="value-tag" style="color:var(--accent-emerald)">WEBGL 3D</span>
             </div>
 
             <div class="canvas-card">
                 <div class="canvas-overlay" id="coords-overlay">X: 120.0 | Y: 0.0 | Z: 100.0</div>
-                <canvas id="armCanvas" width="320" height="220"></canvas>
+                <div class="canvas-hint">🖱️ Drag to rotate 3D view • Scroll to zoom</div>
+                <canvas id="webgl3dCanvas"></canvas>
             </div>
 
             <div class="panel-header" style="margin-top: 15px;">
@@ -649,6 +670,237 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         let isEStopped = false;
         let lastSendTime = 0;
 
+        // -------------------------------------------------------------
+        // THREE.JS 3D MEARM ROBOT MODEL (PERFECT ACCURACY)
+        // -------------------------------------------------------------
+        let scene, camera, renderer, controls;
+        let baseTurntable, shoulderGroup, trianglePlateGroup, forearmGroup, wristGroup, clawLeft, clawRight;
+        let rearParallelRod, topParallelRod, servo3Crank;
+
+        const L0 = 50;  // Base height to shoulder axis
+        const L1 = 110; // Primary Boom
+        const L2 = 100; // Forearm
+        const L3 = 50;  // Claw extension
+
+        function init3DRobotScene() {
+            const container = document.getElementById('webgl3dCanvas');
+            const w = container.parentElement.clientWidth;
+            const h = 300;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x060911);
+
+            camera = new THREE.PerspectiveCamera(45, w / h, 1, 2000);
+            camera.position.set(220, 160, 220);
+
+            renderer = new THREE.WebGLRenderer({ canvas: container, antialias: true });
+            renderer.setSize(w, h);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            if (typeof THREE.OrbitControls !== 'undefined') {
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.target.set(0, 50, 30);
+            }
+
+            // Lighting
+            scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            dirLight.position.set(150, 250, 150);
+            scene.add(dirLight);
+
+            const cyanLight = new THREE.PointLight(0x38bdf8, 1, 400);
+            cyanLight.position.set(0, 150, 100);
+            scene.add(cyanLight);
+
+            // Ground Grid
+            scene.add(new THREE.GridHelper(300, 30, 0x38bdf8, 0x1e293b));
+
+            // Materials (Matching Acrylic Assembly1 a/b/c)
+            const whiteAcrylicMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2, metalness: 0.1 });
+            const blueServoMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, transparent: true, opacity: 0.9 });
+            const darkMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+            const metalMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8, roughness: 0.3 });
+
+            // --- 1. BASE STAND ---
+            const baseGround = new THREE.Mesh(new THREE.BoxGeometry(130, 6, 170), darkMat);
+            baseGround.position.set(0, 3, 0);
+            scene.add(baseGround);
+
+            // Standoff Screws
+            [[-45,-55],[45,-55],[-45,55],[45,55]].forEach(pt => {
+                const screw = new THREE.Mesh(new THREE.CylinderGeometry(2,2,22), metalMat);
+                screw.position.set(pt[0], 14, pt[1]);
+                scene.add(screw);
+            });
+
+            // --- 2. BASE TURNTABLE GROUP (Rotates J1) ---
+            baseTurntable = new THREE.Group();
+            baseTurntable.position.set(0, 25, 0);
+            scene.add(baseTurntable);
+
+            // Turntable Plate
+            const turntablePlate = new THREE.Mesh(new THREE.BoxGeometry(80, 5, 80), whiteAcrylicMat);
+            turntablePlate.position.set(0, 0, 0);
+            baseTurntable.add(turntablePlate);
+
+            // Side Vertical Acrylic Plates (Part1 & Part2)
+            const sidePlateLeft = new THREE.Mesh(new THREE.BoxGeometry(4, 60, 50), whiteAcrylicMat);
+            sidePlateLeft.position.set(-18, 30, 0);
+            baseTurntable.add(sidePlateLeft);
+
+            const sidePlateRight = new THREE.Mesh(new THREE.BoxGeometry(4, 60, 50), whiteAcrylicMat);
+            sidePlateRight.position.set(18, 30, 0);
+            baseTurntable.add(sidePlateRight);
+
+            // Servos 2 & 3
+            const servo2 = new THREE.Mesh(new THREE.BoxGeometry(12, 28, 22), blueServoMat);
+            servo2.position.set(-22, 25, 0);
+            baseTurntable.add(servo2);
+
+            const servo3 = new THREE.Mesh(new THREE.BoxGeometry(12, 28, 22), blueServoMat);
+            servo3.position.set(22, 25, 0);
+            baseTurntable.add(servo3);
+
+            // --- 3. SHOULDER BOOM (L1 = 110mm) ---
+            shoulderGroup = new THREE.Group();
+            shoulderGroup.position.set(-12, 25, 0); // Shoulder Axis
+            baseTurntable.add(shoulderGroup);
+
+            // Primary Boom Link
+            const boomMesh = new THREE.Mesh(new THREE.BoxGeometry(4, L1, 14), whiteAcrylicMat);
+            boomMesh.position.set(0, L1 / 2, 0);
+            shoulderGroup.add(boomMesh);
+
+            // --- 4. SERVO 3 CRANK & REAR PARALLEL ROD ---
+            servo3Crank = new THREE.Group();
+            servo3Crank.position.set(14, 25, 0); // Servo 3 Axis
+            baseTurntable.add(servo3Crank);
+
+            const crankMesh = new THREE.Mesh(new THREE.BoxGeometry(4, 25, 10), whiteAcrylicMat);
+            crankMesh.position.set(0, 12.5, 0);
+            servo3Crank.add(crankMesh);
+
+            // Rear Parallel Rod
+            const rearRodGeo = new THREE.CylinderGeometry(2, 2, L1);
+            rearParallelRod = new THREE.Mesh(rearRodGeo, metalMat);
+            baseTurntable.add(rearParallelRod);
+
+            // --- 5. UPPER TRIANGULAR PIVOT PLATE (At tip of L1) ---
+            trianglePlateGroup = new THREE.Group();
+            trianglePlateGroup.position.set(0, L1, 0);
+            shoulderGroup.add(trianglePlateGroup);
+
+            const triPlate = new THREE.Mesh(new THREE.BoxGeometry(6, 35, 30), whiteAcrylicMat);
+            triPlate.position.set(0, 10, 10);
+            trianglePlateGroup.add(triPlate);
+
+            // --- 6. FOREARM BOOM (L2 = 100mm) ---
+            forearmGroup = new THREE.Group();
+            forearmGroup.position.set(0, 0, 0);
+            trianglePlateGroup.add(forearmGroup);
+
+            const forearmMesh = new THREE.Mesh(new THREE.BoxGeometry(4, L2, 12), whiteAcrylicMat);
+            forearmMesh.position.set(0, L2 / 2, 0);
+            forearmGroup.add(forearmMesh);
+
+            // Top Parallel Leveling Rod
+            const topRodGeo = new THREE.CylinderGeometry(1.5, 1.5, L2);
+            topParallelRod = new THREE.Mesh(topRodGeo, metalMat);
+            topParallelRod.position.set(6, L2 / 2, 12);
+            trianglePlateGroup.add(topParallelRod);
+
+            // --- 7. WRIST PLATFORM & CLAW ---
+            wristGroup = new THREE.Group();
+            wristGroup.position.set(0, L2, 0);
+            forearmGroup.add(wristGroup);
+
+            const wristPlate = new THREE.Mesh(new THREE.BoxGeometry(35, 6, 40), whiteAcrylicMat);
+            wristPlate.position.set(0, 0, 15);
+            wristGroup.add(wristPlate);
+
+            // Servo 4 on Wrist Plate
+            const servo4 = new THREE.Mesh(new THREE.BoxGeometry(20, 12, 26), blueServoMat);
+            servo4.position.set(0, 6, 10);
+            wristGroup.add(servo4);
+
+            // Claw Left & Right Fingers
+            const fingerGeo = new THREE.BoxGeometry(4, 6, 35);
+            fingerGeo.translate(0, 0, 17.5);
+
+            clawLeft = new THREE.Mesh(fingerGeo, whiteAcrylicMat);
+            clawLeft.position.set(-10, -3, 25);
+            wristGroup.add(clawLeft);
+
+            clawRight = new THREE.Mesh(fingerGeo, whiteAcrylicMat);
+            clawRight.position.set(10, -3, 25);
+            wristGroup.add(clawRight);
+
+            animate3DRenderer();
+        }
+
+        function update3DModel(j1, j2, j3, j4) {
+            if (!baseTurntable) return;
+
+            // Convert angles to radians
+            const rad1 = (j1 - 90) * (Math.PI / 180); // Base Yaw
+            const rad2 = (90 - j2) * (Math.PI / 180); // Shoulder Boom Pitch from vertical
+            const rad3 = (90 - j3) * (Math.PI / 180); // Forearm Pitch from vertical
+
+            // 1. Base Turntable Yaw
+            baseTurntable.rotation.y = rad1;
+
+            // 2. Primary Boom Pitch
+            shoulderGroup.rotation.x = rad2;
+
+            // 3. Servo 3 Crank Pitch
+            servo3Crank.rotation.x = rad3;
+
+            // 4. Update Rear Parallel Rod Position & Angle
+            const crankTipY = 25 + 25 * Math.cos(rad3);
+            const crankTipZ = -25 * Math.sin(rad3);
+            
+            const triPinY = 25 + L1 * Math.cos(rad2);
+            const triPinZ = -L1 * Math.sin(rad2);
+
+            const midY = (crankTipY + triPinY) / 2;
+            const midZ = (crankTipZ + triPinZ) / 2;
+
+            rearParallelRod.position.set(14, midY, midZ);
+            rearParallelRod.rotation.x = rad2; // Stays 100% parallel to L1
+
+            // 5. Triangular Plate Counter-rotation to maintain absolute angle rad3
+            trianglePlateGroup.rotation.x = rad3 - rad2;
+
+            // 6. Wrist Group Counter-rotation to keep Claw Platform 100% LEVEL to Ground!
+            wristGroup.rotation.x = -rad3;
+
+            // 7. Gripper Claw Opening Width
+            const clawGap = (j4 / 17.0) * 12;
+            clawLeft.position.x = -7 - clawGap;
+            clawRight.position.x = 7 + clawGap;
+        }
+
+        function animate3DRenderer() {
+            requestAnimationFrame(animate3DRenderer);
+            if (controls) controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            if (!renderer || !camera) return;
+            const container = document.getElementById('webgl3dCanvas');
+            const w = container.parentElement.clientWidth;
+            const h = 300;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+        });
+
+        // -------------------------------------------------------------
+        // DASHBOARD CONTROLS & API DISPATCH
+        // -------------------------------------------------------------
         function stepJoint(id, delta) {
             let el = document.getElementById(id);
             let val = parseInt(el.value) + delta;
@@ -658,17 +910,17 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         }
 
         function onSliderChange() {
-            let j1 = document.getElementById('j1').value;
-            let j2 = document.getElementById('j2').value;
-            let j3 = document.getElementById('j3').value;
-            let j4 = document.getElementById('j4').value;
+            let j1 = parseFloat(document.getElementById('j1').value);
+            let j2 = parseFloat(document.getElementById('j2').value);
+            let j3 = parseFloat(document.getElementById('j3').value);
+            let j4 = parseFloat(document.getElementById('j4').value);
 
-            document.getElementById('j1-val').innerText = j1 + '°';
-            document.getElementById('j2-val').innerText = j2 + '°';
-            document.getElementById('j3-val').innerText = j3 + '°';
-            document.getElementById('j4-val').innerText = j4 + '°';
+            document.getElementById('j1-val').innerText = Math.round(j1) + '°';
+            document.getElementById('j2-val').innerText = Math.round(j2) + '°';
+            document.getElementById('j3-val').innerText = Math.round(j3) + '°';
+            document.getElementById('j4-val').innerText = Math.round(j4) + '°';
 
-            drawArm(parseFloat(j2), parseFloat(j3), parseFloat(j4));
+            update3DModel(j1, j2, j3, j4);
 
             let now = Date.now();
             if (now - lastSendTime > 40) {
@@ -678,37 +930,21 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         }
 
         function applyLimitsToSliders(data) {
-            // Update Joint 1
-            document.getElementById('j1').min = data.j1_min;
-            document.getElementById('j1').max = data.j1_max;
+            document.getElementById('j1').min = data.j1_min; document.getElementById('j1').max = data.j1_max;
             document.getElementById('j1-limit-tag').innerText = `(${data.j1_min}° - ${data.j1_max}°)`;
-            document.getElementById('l-j1-min').value = data.j1_min;
-            document.getElementById('l-j1-max').value = data.j1_max;
-            document.getElementById('l-j1-off').value = data.j1_off;
+            document.getElementById('l-j1-min').value = data.j1_min; document.getElementById('l-j1-max').value = data.j1_max; document.getElementById('l-j1-off').value = data.j1_off;
 
-            // Update Joint 2
-            document.getElementById('j2').min = data.j2_min;
-            document.getElementById('j2').max = data.j2_max;
+            document.getElementById('j2').min = data.j2_min; document.getElementById('j2').max = data.j2_max;
             document.getElementById('j2-limit-tag').innerText = `(${data.j2_min}° - ${data.j2_max}°)`;
-            document.getElementById('l-j2-min').value = data.j2_min;
-            document.getElementById('l-j2-max').value = data.j2_max;
-            document.getElementById('l-j2-off').value = data.j2_off;
+            document.getElementById('l-j2-min').value = data.j2_min; document.getElementById('l-j2-max').value = data.j2_max; document.getElementById('l-j2-off').value = data.j2_off;
 
-            // Update Joint 3
-            document.getElementById('j3').min = data.j3_min;
-            document.getElementById('j3').max = data.j3_max;
+            document.getElementById('j3').min = data.j3_min; document.getElementById('j3').max = data.j3_max;
             document.getElementById('j3-limit-tag').innerText = `(${data.j3_min}° - ${data.j3_max}°)`;
-            document.getElementById('l-j3-min').value = data.j3_min;
-            document.getElementById('l-j3-max').value = data.j3_max;
-            document.getElementById('l-j3-off').value = data.j3_off;
+            document.getElementById('l-j3-min').value = data.j3_min; document.getElementById('l-j3-max').value = data.j3_max; document.getElementById('l-j3-off').value = data.j3_off;
 
-            // Update Joint 4
-            document.getElementById('j4').min = data.j4_min;
-            document.getElementById('j4').max = data.j4_max;
+            document.getElementById('j4').min = data.j4_min; document.getElementById('j4').max = data.j4_max;
             document.getElementById('j4-limit-tag').innerText = `(${data.j4_min}° - ${data.j4_max}°)`;
-            document.getElementById('l-j4-min').value = data.j4_min;
-            document.getElementById('l-j4-max').value = data.j4_max;
-            document.getElementById('l-j4-off').value = data.j4_off;
+            document.getElementById('l-j4-min').value = data.j4_min; document.getElementById('l-j4-max').value = data.j4_max; document.getElementById('l-j4-off').value = data.j4_off;
         }
 
         function saveServoLimits() {
@@ -732,7 +968,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             document.getElementById('l-j1-min').value = 0; document.getElementById('l-j1-max').value = 180; document.getElementById('l-j1-off').value = 0;
             document.getElementById('l-j2-min').value = 15; document.getElementById('l-j2-max').value = 165; document.getElementById('l-j2-off').value = 0;
             document.getElementById('l-j3-min').value = 10; document.getElementById('l-j3-max').value = 170; document.getElementById('l-j3-off').value = 0;
-            document.getElementById('l-j4-min').value = 0; document.getElementById('l-j4-max').value = 120; document.getElementById('l-j4-off').value = 0;
+            document.getElementById('l-j4-min').value = 0; document.getElementById('l-j4-max').value = 17; document.getElementById('l-j4-off').value = 0;
             saveServoLimits();
         }
 
@@ -746,7 +982,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             let z = document.getElementById('ik-z').value;
             fetch(`/api/ik?x=${x}&y=${y}&z=${z}`).then(res => res.json()).then(data => {
                 if(data.success) fetchStatus();
-                else alert("⚠️ Target Coordinate Unreachable by 4-DOF Geometry!");
+                else alert("⚠️ Target Coordinate Unreachable by MeArm Geometry!");
             });
         }
 
@@ -794,97 +1030,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 document.getElementById('coords-overlay').innerText = `X: ${data.x.toFixed(1)} | Y: ${data.y.toFixed(1)} | Z: ${data.z.toFixed(1)}`;
 
                 applyLimitsToSliders(data);
-                drawArm(data.j2, data.j3, data.j4);
+                update3DModel(data.j1, data.j2, data.j3, data.j4);
             });
-        }
-
-        function drawArm(j2, j3, j4) {
-            const canvas = document.getElementById('armCanvas');
-            const ctx = canvas.getContext('2d');
-            const w = canvas.width;
-            const h = canvas.height;
-
-            ctx.clearRect(0, 0, w, h);
-
-            // Draw Background Grid
-            ctx.strokeStyle = 'rgba(56, 189, 248, 0.05)';
-            ctx.lineWidth = 1;
-            for(let x=0; x<w; x+=20) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
-            for(let y=0; y<h; y+=20) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
-
-            const originX = w / 2;
-            const originY = h - 35;
-            const scale = 0.65;
-
-            const rad2 = (j2) * Math.PI / 180;
-            const rad3 = (j2 + j3 - 90) * Math.PI / 180;
-            const rad4 = (j2 + j3 + j4 - 90) * Math.PI / 180;
-
-            const l0 = 35 * scale;
-            const l1 = 120 * scale;
-            const l2 = 110 * scale;
-            const l3 = 65 * scale;
-
-            // Draw Work Envelope Arc
-            ctx.strokeStyle = 'rgba(56, 189, 248, 0.1)';
-            ctx.setLineDash([4, 4]);
-            ctx.beginPath();
-            ctx.arc(originX, originY - l0, (l1 + l2 + l3), Math.PI, 0);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            // Base Stand
-            ctx.fillStyle = '#334155';
-            ctx.fillRect(originX - 30, originY, 60, 10);
-            ctx.fillStyle = '#475569';
-            ctx.fillRect(originX - 8, originY - l0, 16, l0);
-
-            // Joints
-            const sX = originX;
-            const sY = originY - l0;
-            const eX = sX + l1 * Math.cos(rad2);
-            const eY = sY - l1 * Math.sin(rad2);
-            const wX = eX + l2 * Math.cos(rad3);
-            const wY = eY - l2 * Math.sin(rad3);
-            const gX = wX + l3 * Math.cos(rad4);
-            const gY = wY - l3 * Math.sin(rad4);
-
-            // Draw Links
-            ctx.lineCap = 'round';
-            ctx.lineWidth = 8;
-
-            // Link 1 (Shoulder Boom) - Glowing Cyan
-            ctx.strokeStyle = '#38bdf8';
-            ctx.shadowColor = '#38bdf8';
-            ctx.shadowBlur = 8;
-            ctx.beginPath(); ctx.moveTo(sX, sY); ctx.lineTo(eX, eY); ctx.stroke();
-
-            // Link 2 (Forearm) - Indigo
-            ctx.strokeStyle = '#818cf8';
-            ctx.shadowColor = '#818cf8';
-            ctx.beginPath(); ctx.moveTo(eX, eY); ctx.lineTo(wX, wY); ctx.stroke();
-
-            // Link 3 (Gripper) - Rose
-            ctx.strokeStyle = '#fb7185';
-            ctx.shadowColor = '#fb7185';
-            ctx.beginPath(); ctx.moveTo(wX, wY); ctx.lineTo(gX, gY); ctx.stroke();
-
-            // Reset Shadows
-            ctx.shadowBlur = 0;
-
-            // Draw Joint Pivot Circles
-            ctx.fillStyle = '#ffffff';
-            [ {x:sX, y:sY}, {x:eX, y:eY}, {x:wX, y:wY} ].forEach(pt => {
-                ctx.beginPath(); ctx.arc(pt.x, pt.y, 5, 0, 2*Math.PI); ctx.fill();
-                ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
-            });
-
-            // Gripper Tip Indicator
-            ctx.fillStyle = '#fb7185';
-            ctx.beginPath(); ctx.arc(gX, gY, 4, 0, 2*Math.PI); ctx.fill();
         }
 
         window.onload = () => {
+            init3DRobotScene();
             fetchStatus();
             setInterval(fetchStatus, 3000);
         };
