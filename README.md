@@ -15,7 +15,7 @@
 > - **Kinematic Model**: MeArm 4-Bar Parallel Linkage ($L_0=50\text{mm}, L_1=110\text{mm}, L_2=100\text{mm}, L_3=50\text{mm}$). $J_3$ angle is ground-referenced. Top parallel rod keeps wrist platform level.
 > - **Wi-Fi Config**: Station Mode (`SSID: "AMANAT"`, `Pass: "amanath@123"`). AP Fallback (`ESP32-RobotArm` / `robot1234`).
 > - **Boot Mode**: `ENABLE_AUTO_HOME_ON_BOOT false` (Passive mode: zero movement on startup until commanded).
-> - **Web UI**: Embedded HTML5/Three.js 3D WebGL Dashboard with 360° orbit view and real-time joint articulation.
+> - **Web UI**: Embedded HTML5/CSS Glassmorphic Industrial Console with live telemetry & micro-stepping controls.
 > - **Build & Flash**: `python -m platformio run --target upload --upload-port COM4`
 
 ---
@@ -39,18 +39,27 @@
 c-robot-arm/
 ├── platformio.ini                   # Build settings, platform = espressif32, board = esp32dev
 ├── README.md                        # AI-optimized context & comprehensive project guide
-├── include/
+├── LICENSE                          # MIT Open-Source License
+├── .gitignore                       # Git exclusion rules
+│
+├── cad/                             # 3D Mechanical CAD Assets
+│   ├── renders/                     # High-resolution PNG renderings (Assembly1_a/b/c)
+│   └── models/                      # Autodesk Inventor assembly (.iam) & parts (.ipt)
+│
+├── include/                         # Core C++ Headers
 │   ├── config.h                     # Pinout definitions, joint limits, Wi-Fi credentials
 │   ├── ServoController.h            # PCA9685 driver, pulse tick mapping (125-575), limits
 │   ├── Kinematics.h                 # MeArm parallel 4-bar FK & IK trigonometric equations
 │   ├── RobotArm.h                   # High-level coordinator, Teach & Repeat memory buffer
 │   └── WebServerController.h        # Embedded HTTP Web Server & JSON API dispatcher
-├── src/
+│
+├── src/                             # C++ Implementation Files
 │   ├── main.cpp                     # FreeRTOS Dual-Core task spawner (setup & dual loops)
 │   ├── ServoController.cpp          # 100Hz trajectory interpolation engine
 │   ├── Kinematics.cpp               # Analytic IK solver for (X, Y, Z) Cartesian coordinates
 │   ├── RobotArm.cpp                 # Command dispatcher & pose keyframe storage
-│   └── WebServerController.cpp      # PROGMEM index.html with Three.js 3D visualizer
+│   └── WebServerController.cpp      # PROGMEM index.html Industrial Console UI
+│
 └── docs/                            # KINEMATICS_GUIDE.md, HARDWARE_WIRING.md, SERIAL_PROTOCOL.md
 ```
 

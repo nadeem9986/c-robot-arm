@@ -26,7 +26,7 @@ Unlike standard serial-chain industrial manipulators, this robot arm utilizes a 
 4. **Parallel Leveling Wrist & Gripper ($J_4$ / Servo 4 - Claw)**:
    - A top horizontal rod connects the upper triangle plate to the wrist platform.
    - This secondary parallel bar passively keeps the end-effector platform **always level/parallel to the ground plane**.
-   - Servo 4 drives the dual-gear rack-and-pinion claw open and closed ($0^\circ = \text{Closed}, 120^\circ = \text{Fully Open}$).
+   - Servo 4 drives the dual-gear rack-and-pinion claw open and closed ($0^\circ = \text{Closed}, 17^\circ = \text{Fully Open}$).
 
 ---
 
