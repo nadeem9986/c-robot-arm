@@ -1,6 +1,6 @@
 #include "WebServerController.h"
 
-// Professional Industrial Glassmorphism Dashboard UI
+// Professional Industrial Glassmorphism Dashboard UI with 3D Canvas Visualizer
 const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
@@ -386,30 +386,50 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             border-color: var(--accent-cyan);
         }
 
-        /* TELEMETRY CARD */
-        .telemetry-card {
+        /* 3D CANVAS VISUALIZER CARD */
+        .canvas-card {
+            width: 100%;
+            height: 240px;
             background: #060911;
             border: 1px solid rgba(56, 189, 248, 0.2);
             border-radius: 12px;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 14px;
         }
 
-        .telemetry-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.82rem;
-            color: var(--text-secondary);
+        canvas#armCanvas3D {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: grab;
         }
 
-        .telemetry-val {
+        canvas#armCanvas3D:active {
+            cursor: grabbing;
+        }
+
+        .canvas-overlay {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            font-size: 0.72rem;
             font-family: 'JetBrains Mono', monospace;
-            font-weight: 700;
             color: var(--accent-cyan);
+            background: rgba(15, 23, 42, 0.85);
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            pointer-events: none;
+        }
+
+        .canvas-hint {
+            position: absolute;
+            bottom: 6px;
+            right: 8px;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            pointer-events: none;
         }
 
         /* E-STOP BUTTON */
@@ -609,30 +629,18 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <button class="btn-modern btn-primary" onclick="sendIK()">📍 EXECUTE CARTESIAN MOVE</button>
         </div>
 
-        <!-- PANEL 3: TELEMETRY & TEACH REPEAT ENGINE -->
+        <!-- PANEL 3: 3D ROBOT MODEL & TEACH REPEAT ENGINE -->
         <div class="panel">
             <div class="panel-header">
-                <h2>Live System Telemetry</h2>
-                <span class="value-tag" style="color:var(--accent-emerald)">ONLINE</span>
+                <h2>Real-Time 3D Robot Model</h2>
+                <span class="value-tag" style="color:var(--accent-emerald)">3D CANVAS</span>
             </div>
 
-            <div class="telemetry-card">
-                <div class="telemetry-row">
-                    <span>End-Effector X:</span>
-                    <span class="telemetry-val" id="tele-x">120.0 mm</span>
-                </div>
-                <div class="telemetry-row">
-                    <span>End-Effector Y:</span>
-                    <span class="telemetry-val" id="tele-y">0.0 mm</span>
-                </div>
-                <div class="telemetry-row">
-                    <span>End-Effector Z:</span>
-                    <span class="telemetry-val" id="tele-z">100.0 mm</span>
-                </div>
-                <div class="telemetry-row">
-                    <span>RTOS Task Distribution:</span>
-                    <span class="telemetry-val" style="color:var(--accent-emerald);">Core 0 (Web) | Core 1 (Motion)</span>
-                </div>
+            <!-- 3D VISUALIZER CANVAS -->
+            <div class="canvas-card">
+                <div class="canvas-overlay" id="coords-overlay">X: 120.0 | Y: 0.0 | Z: 100.0</div>
+                <div class="canvas-hint">🖱️ Drag to rotate 3D view • Scroll to zoom</div>
+                <canvas id="armCanvas3D"></canvas>
             </div>
 
             <div class="panel-header" style="margin-top: 10px;">
@@ -658,6 +666,206 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         let isEStopped = false;
         let lastSendTime = 0;
 
+        // -------------------------------------------------------------
+        // HIGH-PERFORMANCE 3D MEARM CANVAS VISUALIZER (PARALLEL LINKAGE)
+        // -------------------------------------------------------------
+        let camYaw = 0.6;
+        let camPitch = 0.4;
+        let camZoom = 1.0;
+        let isDragging = false;
+        let lastMouseX = 0, lastMouseY = 0;
+
+        let canvas3D, ctx3D;
+
+        function init3DCanvas() {
+            canvas3D = document.getElementById('armCanvas3D');
+            if (!canvas3D) return;
+            ctx3D = canvas3D.getContext('2d');
+
+            function resizeCanvas() {
+                canvas3D.width = canvas3D.parentElement.clientWidth;
+                canvas3D.height = canvas3D.parentElement.clientHeight;
+                draw3DModel();
+            }
+
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            canvas3D.onmousedown = (e) => { isDragging = true; lastMouseX = e.clientX; lastMouseY = e.clientY; };
+            window.onmouseup = () => { isDragging = false; };
+            window.onmousemove = (e) => {
+                if (!isDragging) return;
+                camYaw += (e.clientX - lastMouseX) * 0.01;
+                camPitch = Math.max(0.1, Math.min(1.2, camPitch + (e.clientY - lastMouseY) * 0.01));
+                lastMouseX = e.clientX; lastMouseY = e.clientY;
+                draw3DModel();
+            };
+            canvas3D.onwheel = (e) => {
+                e.preventDefault();
+                camZoom = Math.max(0.6, Math.min(2.0, camZoom - e.deltaY * 0.001));
+                draw3DModel();
+            };
+        }
+
+        function project3D(x, y, z) {
+            if (!canvas3D) return { x: 0, y: 0, z: 0, scale: 1 };
+            const w = canvas3D.width;
+            const h = canvas3D.height;
+
+            const cosY = Math.cos(camYaw), sinY = Math.sin(camYaw);
+            const x1 = x * cosY - z * sinY;
+            const z1 = x * sinY + z * cosY;
+
+            const cosP = Math.cos(camPitch), sinP = Math.sin(camPitch);
+            const y2 = y * cosP - z1 * sinP;
+            const z2 = y * sinP + z1 * cosP;
+
+            const dist = 300;
+            const scale = (dist / (dist + z2)) * 1.1 * camZoom;
+
+            const screenX = w / 2 + x1 * scale;
+            const screenY = h / 2 + 40 - y2 * scale;
+            return { x: screenX, y: screenY, z: z2, scale: scale };
+        }
+
+        function drawLine3D(p1, p2, color, width=3, dash=[]) {
+            if (!ctx3D) return;
+            const sp1 = project3D(p1.x, p1.y, p1.z);
+            const sp2 = project3D(p2.x, p2.y, p2.z);
+            ctx3D.strokeStyle = color;
+            ctx3D.lineWidth = width * ((sp1.scale + sp2.scale) / 2);
+            ctx3D.setLineDash(dash);
+            ctx3D.beginPath();
+            ctx3D.moveTo(sp1.x, sp1.y);
+            ctx3D.lineTo(sp2.x, sp2.y);
+            ctx3D.stroke();
+            ctx3D.setLineDash([]);
+        }
+
+        function drawJoint3D(p, color='#38bdf8', radius=5) {
+            if (!ctx3D) return;
+            const sp = project3D(p.x, p.y, p.z);
+            ctx3D.fillStyle = color;
+            ctx3D.beginPath();
+            ctx3D.arc(sp.x, sp.y, radius * sp.scale, 0, Math.PI * 2);
+            ctx3D.fill();
+            ctx3D.strokeStyle = '#ffffff';
+            ctx3D.lineWidth = 1;
+            ctx3D.stroke();
+        }
+
+        function draw3DModel() {
+            if (!canvas3D || !ctx3D) return;
+            const w = canvas3D.width;
+            const h = canvas3D.height;
+            ctx3D.clearRect(0, 0, w, h);
+
+            // Ground Grid
+            const gridSize = 140;
+            const step = 20;
+            for (let i = -gridSize; i <= gridSize; i += step) {
+                drawLine3D({x: i, y: 0, z: -gridSize}, {x: i, y: 0, z: gridSize}, 'rgba(56, 189, 248, 0.08)', 1);
+                drawLine3D({x: -gridSize, y: 0, z: i}, {x: gridSize, y: 0, z: i}, 'rgba(56, 189, 248, 0.08)', 1);
+            }
+
+            let j1 = parseFloat(document.getElementById('j1').value || 90);
+            let j2 = parseFloat(document.getElementById('j2').value || 90);
+            let j3 = parseFloat(document.getElementById('j3').value || 90);
+            let j4 = parseFloat(document.getElementById('j4').value || 10);
+
+            const rad1 = (j1 - 90) * Math.PI / 180;
+            const rad2 = j2 * Math.PI / 180;
+            const rad3 = j3 * Math.PI / 180;
+
+            const L0 = 40;  // Base height
+            const L1 = 90;  // Boom
+            const L2 = 80;  // Forearm
+            const L3 = 45;  // Claw extension
+
+            const bS = { x: 0, y: L0, z: 0 };
+
+            function rotY(x, z) {
+                return {
+                    x: x * Math.cos(rad1) - z * Math.sin(rad1),
+                    z: x * Math.sin(rad1) + z * Math.cos(rad1)
+                };
+            }
+
+            const eR = L1 * Math.cos(rad2);
+            const eY = L0 + L1 * Math.sin(rad2);
+            const eXZ = rotY(eR, 0);
+            const bE = { x: eXZ.x, y: eY, z: eXZ.z };
+
+            const wR = eR + L2 * Math.cos(rad3);
+            const wY = eY + L2 * Math.sin(rad3);
+            const wXZ = rotY(wR, 0);
+            const bW = { x: wXZ.x, y: wY, z: wXZ.z };
+
+            const gR = wR + L3;
+            const gXZ = rotY(gR, 0);
+            const bG = { x: gXZ.x, y: wY, z: gXZ.z };
+
+            const cR = 25 * Math.cos(rad3);
+            const cY = L0 + 25 * Math.sin(rad3);
+            const cXZ = rotY(cR, 12);
+            const bC = { x: cXZ.x, y: cY, z: cXZ.z };
+
+            const pOff = rotY(eR, 12);
+            const bP = { x: pOff.x, y: eY, z: pOff.z };
+
+            const tOff1 = rotY(eR, -8);
+            const bT1 = { x: tOff1.x, y: eY + 10, z: tOff1.z };
+            const tOff2 = rotY(wR, -8);
+            const bT2 = { x: tOff2.x, y: wY + 10, z: tOff2.z };
+
+            // Render Structure
+            drawLine3D({x:-30, y:0, z:-30}, {x:30, y:0, z:-30}, '#334155', 4);
+            drawLine3D({x:30, y:0, z:-30}, {x:30, y:0, z:30}, '#334155', 4);
+            drawLine3D({x:30, y:0, z:30}, {x:-30, y:0, z:30}, '#334155', 4);
+            drawLine3D({x:-30, y:0, z:30}, {x:-30, y:0, z:-30}, '#334155', 4);
+            drawLine3D({x:0, y:0, z:0}, bS, '#475569', 8);
+
+            const sL = rotY(0, -14);
+            const sR = rotY(0, 14);
+            drawLine3D({x:sL.x, y:L0, z:sL.z}, {x:sL.x, y:L0-20, z:sL.z}, '#0284c7', 8);
+            drawLine3D({x:sR.x, y:L0, z:sR.z}, {x:sR.x, y:L0-20, z:sR.z}, '#0284c7', 8);
+
+            const cAxis = rotY(0, 12);
+            drawLine3D({x:cAxis.x, y:L0, z:cAxis.z}, bC, '#f8fafc', 3);
+
+            drawLine3D(bC, bP, '#818cf8', 3, [4, 4]);
+
+            const boomAxis = rotY(0, -6);
+            const bS_off = { x: boomAxis.x, y: L0, z: boomAxis.z };
+            drawLine3D(bS_off, bE, '#38bdf8', 6);
+
+            drawLine3D(bE, bW, '#818cf8', 5);
+
+            drawLine3D(bT1, bT2, 'rgba(56,189,248,0.5)', 3);
+
+            drawLine3D(bW, bG, '#fb7185', 5);
+
+            const clawWidth = (j4 / 17.0) * 10;
+            const fL = rotY(gR, -clawWidth);
+            const fR = rotY(gR, clawWidth);
+            const fL_tip = rotY(gR + 15, -clawWidth);
+            const fR_tip = rotY(gR + 15, clawWidth);
+
+            drawLine3D({x:bG.x, y:bG.y, z:bG.z}, {x:fL.x, y:bG.y, z:fL.z}, '#fb7185', 3);
+            drawLine3D({x:fL.x, y:bG.y, z:fL.z}, {x:fL_tip.x, y:bG.y, z:fL_tip.z}, '#fb7185', 3);
+
+            drawLine3D({x:bG.x, y:bG.y, z:bG.z}, {x:fR.x, y:bG.y, z:fR.z}, '#fb7185', 3);
+            drawLine3D({x:fR.x, y:bG.y, z:fR.z}, {x:fR_tip.x, y:bG.y, z:fR_tip.z}, '#fb7185', 3);
+
+            drawJoint3D(bS, '#ffffff', 4);
+            drawJoint3D(bE, '#38bdf8', 5);
+            drawJoint3D(bW, '#818cf8', 5);
+            drawJoint3D(bG, '#fb7185', 4);
+        }
+
+        // -------------------------------------------------------------
+        // CONTROL DISPATCHERS
+        // -------------------------------------------------------------
         function stepJoint(id, delta) {
             let el = document.getElementById(id);
             let val = parseInt(el.value) + delta;
@@ -676,6 +884,8 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             document.getElementById('j2-val').innerText = Math.round(j2) + '°';
             document.getElementById('j3-val').innerText = Math.round(j3) + '°';
             document.getElementById('j4-val').innerText = Math.round(j4) + '°';
+
+            draw3DModel();
 
             let now = Date.now();
             if (now - lastSendTime > 40) {
@@ -781,17 +991,17 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 document.getElementById('ik-y').value = Math.round(data.y);
                 document.getElementById('ik-z').value = Math.round(data.z);
 
-                document.getElementById('tele-x').innerText = data.x.toFixed(1) + ' mm';
-                document.getElementById('tele-y').innerText = data.y.toFixed(1) + ' mm';
-                document.getElementById('tele-z').innerText = data.z.toFixed(1) + ' mm';
-
                 document.getElementById('teach-count').innerText = data.teachCount + ' POSES';
+                let overlay = document.getElementById('coords-overlay');
+                if (overlay) overlay.innerText = `X: ${data.x.toFixed(1)} | Y: ${data.y.toFixed(1)} | Z: ${data.z.toFixed(1)}`;
 
                 applyLimitsToSliders(data);
+                draw3DModel();
             });
         }
 
         window.onload = () => {
+            init3DCanvas();
             fetchStatus();
             setInterval(fetchStatus, 3000);
         };
@@ -812,7 +1022,7 @@ void WebServerController::begin(bool useStationMode, const char* staSSID, const 
         Serial.printf("[WIFI] Connecting to Wi-Fi Network '%s'", staSSID);
 
         int attempts = 0;
-        while (WiFi.status() != WL_CONNECTED && attempts < 20) { // Wait up to 10 seconds
+        while (WiFi.status() != WL_CONNECTED && attempts < 20) {
             delay(500);
             Serial.print(".");
             attempts++;
