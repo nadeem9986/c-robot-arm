@@ -773,107 +773,231 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             const h = canvas3D.height;
             ctx3D.clearRect(0, 0, w, h);
 
-            // Ground Grid
-            const gridSize = 140;
-            const step = 20;
-            for (let i = -gridSize; i <= gridSize; i += step) {
-                drawLine3D({x: i, y: 0, z: -gridSize}, {x: i, y: 0, z: gridSize}, 'rgba(56, 189, 248, 0.08)', 1);
-                drawLine3D({x: -gridSize, y: 0, z: i}, {x: gridSize, y: 0, z: i}, 'rgba(56, 189, 248, 0.08)', 1);
-            }
-
+            // ─── Joint Angles ────────────────────────────────────────────
             let j1 = parseFloat(document.getElementById('j1').value || 90);
             let j2 = parseFloat(document.getElementById('j2').value || 90);
             let j3 = parseFloat(document.getElementById('j3').value || 90);
             let j4 = parseFloat(document.getElementById('j4').value || 10);
 
+            // J1: base yaw (90 = straight ahead)
             const rad1 = (j1 - 90) * Math.PI / 180;
-            const rad2 = j2 * Math.PI / 180;
-            const rad3 = j3 * Math.PI / 180;
+            // J2: lower boom angle from horizontal (90=straight up, 15=nearly flat fwd)
+            // Map: j2=90 → boom angled forward at ~45° from vertical chassis
+            const rad2 = (j2 - 90) * Math.PI / 180; // deviation from vertical
+            // J3: rear elevator angle, same coordinate convention
+            const rad3 = (j3 - 90) * Math.PI / 180;
 
-            const L0 = 40;  // Base height
-            const L1 = 90;  // Boom
-            const L2 = 80;  // Forearm
-            const L3 = 45;  // Claw extension
+            // ─── Physical Dimensions (px, scaled from mm: 85/120/110/65) ─
+            const BASE_H  = 12;   // flat base plate thickness
+            const CHASSIS_W = 22; // upright chassis half-width (L/R side plates)
+            const CHASSIS_H = 40; // height of the upright chassis block
+            const L0      = BASE_H + CHASSIS_H; // shoulder pivot height = 52
+            const L1      = 90;   // lower front boom (J2 drives) — scaled from 120mm
+            const L2      = 82;   // forearm / upper link — scaled from 110mm
+            const REAR_H  = 90;   // rear elevator bar length (same as L1 for parallelogram)
+            const TOP_LINK= 82;   // top connecting bar = L2 for parallelogram
+            const L3      = 48;   // wrist extension to claw pivot — scaled from 65mm
+            const SERVO_W = 14;   // SG90 body width
+            const SERVO_H = 10;   // SG90 body height
 
-            const bS = { x: 0, y: L0, z: 0 };
-
-            function rotY(x, z) {
+            // ─── Rotator: yaw all X/Z by J1 ─────────────────────────────
+            function ry(x, z) {
                 return {
                     x: x * Math.cos(rad1) - z * Math.sin(rad1),
                     z: x * Math.sin(rad1) + z * Math.cos(rad1)
                 };
             }
+            function pt(x, y, z) {
+                const r = ry(x, z);
+                return { x: r.x, y, z: r.z };
+            }
 
-            const eR = L1 * Math.cos(rad2);
-            const eY = L0 + L1 * Math.sin(rad2);
-            const eXZ = rotY(eR, 0);
-            const bE = { x: eXZ.x, y: eY, z: eXZ.z };
+            // ─── Ground Grid ─────────────────────────────────────────────
+            const gridSize = 150, step = 20;
+            for (let i = -gridSize; i <= gridSize; i += step) {
+                drawLine3D({x:i,y:0,z:-gridSize},{x:i,y:0,z:gridSize},'rgba(56,189,248,0.07)',1);
+                drawLine3D({x:-gridSize,y:0,z:i},{x:gridSize,y:0,z:i},'rgba(56,189,248,0.07)',1);
+            }
 
-            const wR = eR + L2 * Math.cos(rad3);
-            const wY = eY + L2 * Math.sin(rad3);
-            const wXZ = rotY(wR, 0);
-            const bW = { x: wXZ.x, y: wY, z: wXZ.z };
+            // ─── BASE PLATE (flat rectangular acrylic plate on ground) ───
+            const bpW=55, bpD=50, bpY=0;
+            drawLine3D({x:-bpW,y:bpY,z:-bpD},{x:bpW,y:bpY,z:-bpD},'#475569',5);
+            drawLine3D({x:bpW, y:bpY,z:-bpD},{x:bpW,y:bpY,z: bpD},'#475569',5);
+            drawLine3D({x:bpW, y:bpY,z: bpD},{x:-bpW,y:bpY,z:bpD},'#475569',5);
+            drawLine3D({x:-bpW,y:bpY,z: bpD},{x:-bpW,y:bpY,z:-bpD},'#475569',5);
+            // Base fill lines for plate appearance
+            for(let xi=-bpW+10; xi<bpW; xi+=10) {
+                drawLine3D({x:xi,y:bpY,z:-bpD},{x:xi,y:bpY,z:bpD},'rgba(71,85,105,0.3)',1);
+            }
 
-            const gR = wR + L3;
-            const gXZ = rotY(gR, 0);
-            const bG = { x: gXZ.x, y: wY, z: gXZ.z };
+            // ─── J1 BASE SERVO (underneath base, centered) ───────────────
+            const j1sY = -8;
+            drawLine3D({x:-SERVO_W,y:j1sY,z:-SERVO_H},{x:SERVO_W,y:j1sY,z:-SERVO_H},'#1d4ed8',6);
+            drawLine3D({x:SERVO_W,y:j1sY,z:-SERVO_H},{x:SERVO_W,y:j1sY,z:SERVO_H},'#1d4ed8',6);
+            drawLine3D({x:SERVO_W,y:j1sY,z:SERVO_H},{x:-SERVO_W,y:j1sY,z:SERVO_H},'#1d4ed8',6);
+            drawLine3D({x:-SERVO_W,y:j1sY,z:SERVO_H},{x:-SERVO_W,y:j1sY,z:-SERVO_H},'#1d4ed8',6);
 
-            const cR = 25 * Math.cos(rad3);
-            const cY = L0 + 25 * Math.sin(rad3);
-            const cXZ = rotY(cR, 12);
-            const bC = { x: cXZ.x, y: cY, z: cXZ.z };
+            // ─── UPRIGHT ACRYLIC CHASSIS (two side plates) ───────────────
+            // Left side plate (J2 servo side)
+            const cLx = -CHASSIS_W;
+            drawLine3D({x:cLx,y:BASE_H,z:-12},{x:cLx,y:L0,z:-12},'#64748b',7);
+            drawLine3D({x:cLx,y:BASE_H,z: 12},{x:cLx,y:L0,z: 12},'#64748b',7);
+            drawLine3D({x:cLx,y:L0,z:-12},{x:cLx,y:L0,z:12},'#64748b',4);
+            drawLine3D({x:cLx,y:BASE_H,z:-12},{x:cLx,y:BASE_H,z:12},'#64748b',4);
+            // Right side plate (J3 servo side)
+            const cRx = CHASSIS_W;
+            drawLine3D({x:cRx,y:BASE_H,z:-12},{x:cRx,y:L0,z:-12},'#64748b',7);
+            drawLine3D({x:cRx,y:BASE_H,z: 12},{x:cRx,y:L0,z: 12},'#64748b',7);
+            drawLine3D({x:cRx,y:L0,z:-12},{x:cRx,y:L0,z:12},'#64748b',4);
+            drawLine3D({x:cRx,y:BASE_H,z:-12},{x:cRx,y:BASE_H,z:12},'#64748b',4);
+            // Cross brace between side plates
+            drawLine3D({x:cLx,y:BASE_H+8,z:0},{x:cRx,y:BASE_H+8,z:0},'#475569',4);
+            drawLine3D({x:cLx,y:BASE_H+20,z:0},{x:cRx,y:BASE_H+20,z:0},'#475569',4);
 
-            const pOff = rotY(eR, 12);
-            const bP = { x: pOff.x, y: eY, z: pOff.z };
+            // ─── J2 SERVO (left side of chassis, drives front boom) ──────
+            // Rotated by J1
+            const j2sPos = pt(cLx-2, BASE_H+15, 0);
+            const j2sBL = pt(cLx-2, BASE_H+8, -SERVO_H); 
+            const j2sBR = pt(cLx-2, BASE_H+8,  SERVO_H);
+            const j2sTL = pt(cLx-2, BASE_H+22,-SERVO_H);
+            const j2sTR = pt(cLx-2, BASE_H+22, SERVO_H);
+            const j2sOL = pt(cLx-SERVO_W-2, BASE_H+8, -SERVO_H);
+            const j2sOR = pt(cLx-SERVO_W-2, BASE_H+8,  SERVO_H);
+            const j2sTOL= pt(cLx-SERVO_W-2, BASE_H+22,-SERVO_H);
+            const j2sTOR= pt(cLx-SERVO_W-2, BASE_H+22, SERVO_H);
+            drawLine3D(j2sBL, j2sBR,'#2563eb',5); drawLine3D(j2sTL,j2sTR,'#2563eb',5);
+            drawLine3D(j2sBL, j2sTL,'#2563eb',5); drawLine3D(j2sBR,j2sTR,'#2563eb',5);
+            drawLine3D(j2sOL,j2sOR,'#2563eb',5); drawLine3D(j2sTOL,j2sTOR,'#2563eb',5);
+            drawLine3D(j2sBL,j2sOL,'#2563eb',4); drawLine3D(j2sBR,j2sOR,'#2563eb',4);
+            drawLine3D(j2sTL,j2sTOL,'#2563eb',4); drawLine3D(j2sTR,j2sTOR,'#2563eb',4);
 
-            const tOff1 = rotY(eR, -8);
-            const bT1 = { x: tOff1.x, y: eY + 10, z: tOff1.z };
-            const tOff2 = rotY(wR, -8);
-            const bT2 = { x: tOff2.x, y: wY + 10, z: tOff2.z };
+            // ─── J3 SERVO (right side of chassis, drives rear elevator) ──
+            const j3sBL = pt(cRx+2, BASE_H+8,  -SERVO_H);
+            const j3sBR = pt(cRx+2, BASE_H+8,   SERVO_H);
+            const j3sTL = pt(cRx+2, BASE_H+22, -SERVO_H);
+            const j3sTR = pt(cRx+2, BASE_H+22,  SERVO_H);
+            const j3sOL = pt(cRx+SERVO_W+2, BASE_H+8,  -SERVO_H);
+            const j3sOR = pt(cRx+SERVO_W+2, BASE_H+8,   SERVO_H);
+            const j3sTOL= pt(cRx+SERVO_W+2, BASE_H+22, -SERVO_H);
+            const j3sTOR= pt(cRx+SERVO_W+2, BASE_H+22,  SERVO_H);
+            drawLine3D(j3sBL,j3sBR,'#1d4ed8',5); drawLine3D(j3sTL,j3sTR,'#1d4ed8',5);
+            drawLine3D(j3sBL,j3sTL,'#1d4ed8',5); drawLine3D(j3sBR,j3sTR,'#1d4ed8',5);
+            drawLine3D(j3sOL,j3sOR,'#1d4ed8',5); drawLine3D(j3sTOL,j3sTOR,'#1d4ed8',5);
+            drawLine3D(j3sBL,j3sOL,'#1d4ed8',4); drawLine3D(j3sBR,j3sOR,'#1d4ed8',4);
+            drawLine3D(j3sTL,j3sTOL,'#1d4ed8',4); drawLine3D(j3sTR,j3sTOR,'#1d4ed8',4);
 
-            // Render Structure
-            drawLine3D({x:-30, y:0, z:-30}, {x:30, y:0, z:-30}, '#334155', 4);
-            drawLine3D({x:30, y:0, z:-30}, {x:30, y:0, z:30}, '#334155', 4);
-            drawLine3D({x:30, y:0, z:30}, {x:-30, y:0, z:30}, '#334155', 4);
-            drawLine3D({x:-30, y:0, z:30}, {x:-30, y:0, z:-30}, '#334155', 4);
-            drawLine3D({x:0, y:0, z:0}, bS, '#475569', 8);
+            // ─── PIVOT POINTS at shoulder height ─────────────────────────
+            // J2 pivot: left chassis top, front — drives lower boom
+            const pivJ2 = pt(cLx, L0, 0);
+            // J3 pivot: right chassis top, rear — drives rear elevator bar
+            const pivJ3 = pt(cRx, L0, 0);
 
-            const sL = rotY(0, -14);
-            const sR = rotY(0, 14);
-            drawLine3D({x:sL.x, y:L0, z:sL.z}, {x:sL.x, y:L0-20, z:sL.z}, '#0284c7', 8);
-            drawLine3D({x:sR.x, y:L0, z:sR.z}, {x:sR.x, y:L0-20, z:sR.z}, '#0284c7', 8);
+            // ─── FOUR-BAR PARALLELOGRAM KINEMATICS ───────────────────────
+            // J2 controls REACH (forward/back): boom sweeps in XY plane along arm direction
+            // J2=90 → arm pointing straight up. J2=15 → arm swept far forward.
+            const boomAngle = rad2; // angle from vertical → positive = tipped forward
+            const elevAngle = rad3; // angle from vertical → positive = raised up
 
-            const cAxis = rotY(0, 12);
-            drawLine3D({x:cAxis.x, y:L0, z:cAxis.z}, bC, '#f8fafc', 3);
+            // Front lower boom endpoint (elbow) — J2 servo
+            // boom goes forward (positive Z in arm space before yaw)
+            const boomFwd = L1 * Math.sin(boomAngle); // forward reach
+            const boomUp  = L1 * Math.cos(boomAngle); // upward component
+            const elbowWorld = pt(cLx, L0 + boomUp, boomFwd);
 
-            drawLine3D(bC, bP, '#818cf8', 3, [4, 4]);
+            // Rear elevator bar endpoint (upper pivot) — J3 servo
+            // elevator bar length = L1, same geometry but on right side
+            const elevFwd = L1 * Math.sin(elevAngle);
+            const elevUp  = L1 * Math.cos(elevAngle);
+            const rearTopWorld = pt(cRx, L0 + elevUp, elevFwd);
 
-            const boomAxis = rotY(0, -6);
-            const bS_off = { x: boomAxis.x, y: L0, z: boomAxis.z };
-            drawLine3D(bS_off, bE, '#38bdf8', 6);
+            // Wrist position: forearm connects elbow to wrist, parallel to rear elevator bar
+            // The forearm runs parallel to the rear elevator bar (parallelogram constraint)
+            const wristFwd = boomFwd + L2 * Math.sin(elevAngle);
+            const wristUp  = L0 + boomUp + L2 * Math.cos(elevAngle);
+            const wristWorld = pt(0, wristUp, wristFwd);
 
-            drawLine3D(bE, bW, '#818cf8', 5);
+            // Top horizontal bar: from rearTop to wrist — keeps wrist platform level
+            const topBarStart = rearTopWorld;
+            const topBarEnd   = wristWorld;
 
-            drawLine3D(bT1, bT2, 'rgba(56,189,248,0.5)', 3);
+            // Claw platform: extends forward from wrist
+            const clawFwd = wristFwd + L3;
+            const clawWorld = pt(0, wristUp, clawFwd);
 
-            drawLine3D(bW, bG, '#fb7185', 5);
+            // ─── DRAW REAR ELEVATOR BAR (J3 — right side, height control) ─
+            drawLine3D(pivJ3, rearTopWorld, '#f59e0b', 7);
+            // Rear bar label dot
+            drawJoint3D(rearTopWorld, '#f59e0b', 5);
 
-            const clawWidth = (j4 / 17.0) * 10;
-            const fL = rotY(gR, -clawWidth);
-            const fR = rotY(gR, clawWidth);
-            const fL_tip = rotY(gR + 15, -clawWidth);
-            const fR_tip = rotY(gR + 15, clawWidth);
+            // ─── DRAW FRONT LOWER BOOM (J2 — left side, reach control) ──
+            drawLine3D(pivJ2, elbowWorld, '#38bdf8', 8);
+            drawJoint3D(elbowWorld, '#38bdf8', 5);
 
-            drawLine3D({x:bG.x, y:bG.y, z:bG.z}, {x:fL.x, y:bG.y, z:fL.z}, '#fb7185', 3);
-            drawLine3D({x:fL.x, y:bG.y, z:fL.z}, {x:fL_tip.x, y:bG.y, z:fL_tip.z}, '#fb7185', 3);
+            // ─── DRAW FOREARM LINK (elbow → wrist, parallel to rear bar) ─
+            drawLine3D(elbowWorld, wristWorld, '#818cf8', 7);
 
-            drawLine3D({x:bG.x, y:bG.y, z:bG.z}, {x:fR.x, y:bG.y, z:fR.z}, '#fb7185', 3);
-            drawLine3D({x:fR.x, y:bG.y, z:fR.z}, {x:fR_tip.x, y:bG.y, z:fR_tip.z}, '#fb7185', 3);
+            // ─── DRAW TOP CONNECTING BAR (rearTop → wrist, parallelogram) ─
+            drawLine3D(topBarStart, topBarEnd, '#94a3b8', 5);
 
-            drawJoint3D(bS, '#ffffff', 4);
-            drawJoint3D(bE, '#38bdf8', 5);
-            drawJoint3D(bW, '#818cf8', 5);
-            drawJoint3D(bG, '#fb7185', 4);
+            // ─── WRIST PLATFORM (the horizontal connector at wrist) ───────
+            const wpL = pt(-10, wristUp, wristFwd);
+            const wpR = pt( 10, wristUp, wristFwd);
+            drawLine3D(wpL, wpR, '#e2e8f0', 6);
+            drawJoint3D(wristWorld, '#818cf8', 5);
+
+            // ─── WRIST EXTENSION ARM to CLAW ─────────────────────────────
+            drawLine3D(wristWorld, clawWorld, '#fb7185', 6);
+            drawJoint3D(clawWorld, '#fb7185', 5);
+
+            // ─── J4 CLAW SERVO (at claw position) ────────────────────────
+            const clawServoSz = 8;
+            const csL = pt(-clawServoSz, wristUp, clawFwd-clawServoSz);
+            const csR = pt( clawServoSz, wristUp, clawFwd-clawServoSz);
+            const csTL= pt(-clawServoSz, wristUp+clawServoSz, clawFwd-clawServoSz);
+            const csTR= pt( clawServoSz, wristUp+clawServoSz, clawFwd-clawServoSz);
+            drawLine3D(csL,csR,'#3b82f6',5); drawLine3D(csTL,csTR,'#3b82f6',5);
+            drawLine3D(csL,csTL,'#3b82f6',5); drawLine3D(csR,csTR,'#3b82f6',5);
+
+            // ─── GRIPPER CLAW FINGERS (open/close = j4) ──────────────────
+            // j4=0: closed, j4=17: open. Claw opens sideways from arm axis.
+            const clawOpenAngle = (j4 / 17.0) * 28; // max 28° spread each side
+            const fingerLen = 22;
+            const fingerAng = clawOpenAngle * Math.PI / 180;
+            // Left finger
+            const lfBase = pt(-4, wristUp, clawFwd);
+            const lfTip  = pt(-4 - fingerLen*Math.sin(fingerAng), wristUp, clawFwd + fingerLen*Math.cos(fingerAng));
+            const lfTip2 = pt(-4 - fingerLen*Math.sin(fingerAng)*0.4, wristUp-4, clawFwd + fingerLen*Math.cos(fingerAng));
+            drawLine3D(lfBase, lfTip, '#fb7185', 5);
+            drawLine3D(lfTip, lfTip2,'#fb7185', 3);
+            // Right finger
+            const rfBase = pt( 4, wristUp, clawFwd);
+            const rfTip  = pt( 4 + fingerLen*Math.sin(fingerAng), wristUp, clawFwd + fingerLen*Math.cos(fingerAng));
+            const rfTip2 = pt( 4 + fingerLen*Math.sin(fingerAng)*0.4, wristUp-4, clawFwd + fingerLen*Math.cos(fingerAng));
+            drawLine3D(rfBase, rfTip, '#fb7185', 5);
+            drawLine3D(rfTip, rfTip2,'#fb7185', 3);
+
+            // ─── BASE PIVOT JOINT (J1 shoulder) ──────────────────────────
+            drawJoint3D(pivJ2, '#38bdf8', 6);
+            drawJoint3D(pivJ3, '#f59e0b', 6);
+            drawJoint3D(pt(0, BASE_H, 0), '#ffffff', 5);
+
+            // ─── AXIS LABELS ──────────────────────────────────────────────
+            // Draw tiny joint labels using 2D overlay
+            if (ctx3D) {
+                const labelJ2 = project3D(pivJ2.x, pivJ2.y, pivJ2.z);
+                const labelJ3 = project3D(pivJ3.x, pivJ3.y, pivJ3.z);
+                const labelW  = project3D(wristWorld.x, wristWorld.y, wristWorld.z);
+                const labelG  = project3D(clawWorld.x,  clawWorld.y,  clawWorld.z);
+                ctx3D.font = 'bold 10px Inter, sans-serif';
+                ctx3D.fillStyle = '#38bdf8';
+                ctx3D.fillText('J2', labelJ2.x+7, labelJ2.y-5);
+                ctx3D.fillStyle = '#f59e0b';
+                ctx3D.fillText('J3', labelJ3.x+7, labelJ3.y-5);
+                ctx3D.fillStyle = '#818cf8';
+                ctx3D.fillText('WRIST', labelW.x+7, labelW.y-5);
+                ctx3D.fillStyle = '#fb7185';
+                ctx3D.fillText('J4', labelG.x+7, labelG.y-5);
+            }
         }
 
         // -------------------------------------------------------------
