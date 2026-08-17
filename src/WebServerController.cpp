@@ -502,7 +502,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <!-- JOINT 1 -->
             <div class="control-item">
                 <div class="control-label">
-                    <span>J1: BASE YAW <span class="limit-subtext" id="j1-limit-tag">(0° - 180°)</span></span>
+                    <span>J1: BASE YAW (LEFT / RIGHT) <span class="limit-subtext" id="j1-limit-tag">(0° - 180°)</span></span>
                     <span class="value-tag" id="j1-val">90°</span>
                 </div>
                 <div class="range-wrapper">
@@ -515,7 +515,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <!-- JOINT 2 -->
             <div class="control-item">
                 <div class="control-label">
-                    <span>J2: SHOULDER BOOM <span class="limit-subtext" id="j2-limit-tag">(15° - 165°)</span></span>
+                    <span>J2: SHOULDER BOOM (FRONT / BACK REACH) <span class="limit-subtext" id="j2-limit-tag">(15° - 165°)</span></span>
                     <span class="value-tag" id="j2-val">90°</span>
                 </div>
                 <div class="range-wrapper">
@@ -528,7 +528,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <!-- JOINT 3 -->
             <div class="control-item">
                 <div class="control-label">
-                    <span>J3: FOREARM PARALLEL BAR <span class="limit-subtext" id="j3-limit-tag">(50° - 170°)</span></span>
+                    <span>J3: ELEVATOR BAR (HEIGHT UP / DOWN) <span class="limit-subtext" id="j3-limit-tag">(50° - 170°)</span></span>
                     <span class="value-tag" id="j3-val">90°</span>
                 </div>
                 <div class="range-wrapper">
@@ -541,7 +541,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <!-- JOINT 4 -->
             <div class="control-item">
                 <div class="control-label">
-                    <span>J4: GRIPPER CLAW <span class="limit-subtext" id="j4-limit-tag">(0° - 17°)</span></span>
+                    <span>J4: GRIPPER CLAW (OPEN / CLOSE) <span class="limit-subtext" id="j4-limit-tag">(0° - 17°)</span></span>
                     <span class="value-tag" id="j4-val">10°</span>
                 </div>
                 <div class="range-wrapper">
