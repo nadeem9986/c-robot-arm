@@ -8,12 +8,15 @@
 
 struct JointState {
     float currentAngle;
+    float startAngle;
     float targetAngle;
     float minAngle;
     float maxAngle;
     float offsetAngle;
     uint8_t channel;
     bool enabled;
+    unsigned long moveStartTimeMs;
+    unsigned long moveDurationMs;
 };
 
 class ServoController {

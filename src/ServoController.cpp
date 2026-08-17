@@ -7,11 +7,11 @@ ServoController::ServoController()
       speedDPS(DEFAULT_MAX_SPEED_DPS),
       lastUpdateMs(0) {
     
-    // Initialize joint limits and channels
-    joints[0] = { J1_DEFAULT_DEG, J1_DEFAULT_DEG, J1_MIN_DEG, J1_MAX_DEG, J1_OFFSET_DEG, JOINT1_BASE_CH, true };
-    joints[1] = { J2_DEFAULT_DEG, J2_DEFAULT_DEG, J2_MIN_DEG, J2_MAX_DEG, J2_OFFSET_DEG, JOINT2_SHOULDER_CH, true };
-    joints[2] = { J3_DEFAULT_DEG, J3_DEFAULT_DEG, J3_MIN_DEG, J3_MAX_DEG, J3_OFFSET_DEG, JOINT3_ELBOW_CH, true };
-    joints[3] = { J4_DEFAULT_DEG, J4_DEFAULT_DEG, J4_MIN_DEG, J4_MAX_DEG, J4_OFFSET_DEG, JOINT4_GRIPPER_CH, true };
+    // Initialize joint limits, channels, and S-Curve trajectory parameters
+    joints[0] = { J1_DEFAULT_DEG, J1_DEFAULT_DEG, J1_DEFAULT_DEG, J1_MIN_DEG, J1_MAX_DEG, J1_OFFSET_DEG, JOINT1_BASE_CH, true, 0, 0 };
+    joints[1] = { J2_DEFAULT_DEG, J2_DEFAULT_DEG, J2_DEFAULT_DEG, J2_MIN_DEG, J2_MAX_DEG, J2_OFFSET_DEG, JOINT2_SHOULDER_CH, true, 0, 0 };
+    joints[2] = { J3_DEFAULT_DEG, J3_DEFAULT_DEG, J3_DEFAULT_DEG, J3_MIN_DEG, J3_MAX_DEG, J3_OFFSET_DEG, JOINT3_ELBOW_CH, true, 0, 0 };
+    joints[3] = { J4_DEFAULT_DEG, J4_DEFAULT_DEG, J4_DEFAULT_DEG, J4_MIN_DEG, J4_MAX_DEG, J4_OFFSET_DEG, JOINT4_GRIPPER_CH, true, 0, 0 };
 }
 
 bool ServoController::begin(uint8_t sdaPin, uint8_t sclPin, uint32_t i2cSpeed) {
@@ -59,8 +59,11 @@ void ServoController::setJointAngleDirect(uint8_t jointIndex, float angleDeg) {
     if (jointIndex >= 4 || isEmergencyStopped || !initialized) return;
 
     angleDeg = constrain(angleDeg, joints[jointIndex].minAngle, joints[jointIndex].maxAngle);
+    joints[jointIndex].startAngle = angleDeg;
     joints[jointIndex].currentAngle = angleDeg;
     joints[jointIndex].targetAngle = angleDeg;
+    joints[jointIndex].moveStartTimeMs = millis();
+    joints[jointIndex].moveDurationMs = 1;
 
     uint16_t ticks = angleToTicks(angleDeg, jointIndex);
     pwm.setPWM(joints[jointIndex].channel, 0, ticks);
@@ -69,7 +72,19 @@ void ServoController::setJointAngleDirect(uint8_t jointIndex, float angleDeg) {
 void ServoController::setJointTargetAngle(uint8_t jointIndex, float angleDeg) {
     if (jointIndex >= 4 || isEmergencyStopped) return;
     angleDeg = constrain(angleDeg, joints[jointIndex].minAngle, joints[jointIndex].maxAngle);
-    joints[jointIndex].targetAngle = angleDeg;
+
+    if (fabs(angleDeg - joints[jointIndex].targetAngle) > 0.05f) {
+        joints[jointIndex].startAngle = joints[jointIndex].currentAngle;
+        joints[jointIndex].targetAngle = angleDeg;
+
+        float delta = fabs(joints[jointIndex].targetAngle - joints[jointIndex].startAngle);
+        float speed = (speedDPS > 0.5f) ? speedDPS : DEFAULT_MAX_SPEED_DPS;
+        unsigned long durationMs = (unsigned long)((delta / speed) * 1000.0f);
+        if (durationMs < 20) durationMs = 20;
+
+        joints[jointIndex].moveStartTimeMs = millis();
+        joints[jointIndex].moveDurationMs = durationMs;
+    }
 }
 
 void ServoController::setAllTargets(float j1, float j2, float j3, float j4) {
@@ -90,26 +105,21 @@ void ServoController::update() {
     if (isEmergencyStopped || !initialized) return;
 
     unsigned long now = millis();
-    float dt = (now - lastUpdateMs) / 1000.0f; // dt in seconds
-    if (dt <= 0.0f) return;
-    lastUpdateMs = now;
-
-    float maxDelta = speedDPS * dt;
 
     for (uint8_t i = 0; i < 4; i++) {
         if (!joints[i].enabled) continue;
 
-        float diff = joints[i].targetAngle - joints[i].currentAngle;
-        if (fabs(diff) > 0.01f) {
-            if (fabs(diff) <= maxDelta) {
+        if (fabs(joints[i].currentAngle - joints[i].targetAngle) > 0.01f) {
+            unsigned long elapsed = now - joints[i].moveStartTimeMs;
+            if (elapsed >= joints[i].moveDurationMs) {
                 joints[i].currentAngle = joints[i].targetAngle;
             } else {
-                if (diff > 0) {
-                    joints[i].currentAngle += maxDelta;
-                } else {
-                    joints[i].currentAngle -= maxDelta;
-                }
+                float t = (float)elapsed / (float)joints[i].moveDurationMs;
+                // Cosine S-Curve Ease-In-Out Profiling: smoothT = (1 - cos(pi * t)) / 2
+                float smoothT = (1.0f - cosf(M_PI * t)) * 0.5f;
+                joints[i].currentAngle = joints[i].startAngle + (joints[i].targetAngle - joints[i].startAngle) * smoothT;
             }
+
             uint16_t ticks = angleToTicks(joints[i].currentAngle, i);
             pwm.setPWM(joints[i].channel, 0, ticks);
         }
@@ -117,7 +127,7 @@ void ServoController::update() {
 }
 
 JointState ServoController::getJointState(uint8_t jointIndex) const {
-    if (jointIndex >= 4) return {0, 0, 0, 180, 0, 0, false};
+    if (jointIndex >= 4) return {0, 0, 0, 0, 180, 0, 0, false, 0, 0};
     return joints[jointIndex];
 }
 
