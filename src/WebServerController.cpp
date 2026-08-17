@@ -1,6 +1,6 @@
 #include "WebServerController.h"
 
-// Professional Industrial Glassmorphism Dashboard UI with 3D Canvas Visualizer
+// Professional Industrial Glassmorphism Dashboard UI with Motion Speed Control & 3D Canvas
 const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
@@ -492,7 +492,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     <!-- MAIN CONTROL DASHBOARD GRID -->
     <div class="dashboard-grid">
 
-        <!-- PANEL 1: DIRECT JOINT CONTROL -->
+        <!-- PANEL 1: DIRECT JOINT CONTROL & SPEED LIMITER -->
         <div class="panel">
             <div class="panel-header">
                 <h2>Joint Kinematics</h2>
@@ -548,6 +548,19 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                     <button class="step-btn" onclick="stepJoint('j4', -2)">-</button>
                     <input type="range" id="j4" min="0" max="17" value="10" oninput="onSliderChange()">
                     <button class="step-btn" onclick="stepJoint('j4', 2)">+</button>
+                </div>
+            </div>
+
+            <!-- 🚀 DYNAMIC MOTION SPEED SLIDER -->
+            <div class="control-item" style="margin-top: 10px; border: 1px solid rgba(56, 189, 248, 0.3); background: rgba(56, 189, 248, 0.05);">
+                <div class="control-label">
+                    <span style="color:var(--accent-cyan); font-weight:700;">⚡ MOTION SPEED LIMIT</span>
+                    <span class="value-tag" id="speed-val" style="background: rgba(56,189,248,0.2);">35 deg/s</span>
+                </div>
+                <div class="range-wrapper">
+                    <span style="font-size:0.7rem; color:var(--text-muted); font-weight:600;">SLOW</span>
+                    <input type="range" id="speed-slider" min="10" max="120" value="35" oninput="onSpeedChange()">
+                    <span style="font-size:0.7rem; color:var(--text-muted); font-weight:600;">FAST</span>
                 </div>
             </div>
 
@@ -864,7 +877,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         }
 
         // -------------------------------------------------------------
-        // CONTROL DISPATCHERS
+        // CONTROL DISPATCHERS & SPEED SLIDER
         // -------------------------------------------------------------
         function stepJoint(id, delta) {
             let el = document.getElementById(id);
@@ -890,8 +903,15 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             let now = Date.now();
             if (now - lastSendTime > 40) {
                 lastSendTime = now;
-                fetch(`/api/move?j1=${j1}&j2=${j2}&j3=${j3}&j4=${j4}&direct=1`);
+                // Move with smooth trajectory interpolation speed control (direct=0)
+                fetch(`/api/move?j1=${j1}&j2=${j2}&j3=${j3}&j4=${j4}&direct=0`);
             }
+        }
+
+        function onSpeedChange() {
+            let spd = parseFloat(document.getElementById('speed-slider').value);
+            document.getElementById('speed-val').innerText = Math.round(spd) + ' deg/s';
+            fetch(`/api/speed?s=${spd}`);
         }
 
         function applyLimitsToSliders(data) {
@@ -991,6 +1011,11 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 document.getElementById('ik-y').value = Math.round(data.y);
                 document.getElementById('ik-z').value = Math.round(data.z);
 
+                if (data.speed !== undefined) {
+                    document.getElementById('speed-slider').value = Math.round(data.speed);
+                    document.getElementById('speed-val').innerText = Math.round(data.speed) + ' deg/s';
+                }
+
                 document.getElementById('teach-count').innerText = data.teachCount + ' POSES';
                 let overlay = document.getElementById('coords-overlay');
                 if (overlay) overlay.innerText = `X: ${data.x.toFixed(1)} | Y: ${data.y.toFixed(1)} | Z: ${data.z.toFixed(1)}`;
@@ -1066,6 +1091,7 @@ void WebServerController::setupRoutes() {
     server.on("/api/ik", HTTP_GET, std::bind(&WebServerController::handleApiMoveIK, this));
     server.on("/api/teach", HTTP_GET, std::bind(&WebServerController::handleApiTeach, this));
     server.on("/api/limits", HTTP_GET, std::bind(&WebServerController::handleApiSetLimits, this));
+    server.on("/api/speed", HTTP_GET, std::bind(&WebServerController::handleApiSetSpeed, this));
     server.on("/api/cmd", HTTP_GET, [this]() {
         if (server.hasArg("c")) {
             String res = robot.executeCommand(server.arg("c"));
@@ -1099,6 +1125,7 @@ void WebServerController::handleApiStatus() {
     doc["x"] = xyz.x;
     doc["y"] = xyz.y;
     doc["z"] = xyz.z;
+    doc["speed"] = sc.getSpeed();
     doc["isMoving"] = sc.isMoving();
     doc["isEStopped"] = sc.isEStopped();
     doc["teachCount"] = robot.getTeachCount();
@@ -1114,7 +1141,8 @@ void WebServerController::handleApiMoveJoints() {
         float j2 = server.arg("j2").toFloat();
         float j3 = server.arg("j3").toFloat();
         float j4 = server.arg("j4").toFloat();
-        bool direct = server.hasArg("direct") ? (server.arg("direct") == "1" || server.arg("direct") == "true") : true;
+        // Default direct=false to enforce smooth trajectory speed control!
+        bool direct = server.hasArg("direct") ? (server.arg("direct") == "1" || server.arg("direct") == "true") : false;
         robot.moveJoints(j1, j2, j3, j4, direct);
         server.send(200, "application/json", "{\"success\":true}");
     } else {
@@ -1161,6 +1189,16 @@ void WebServerController::handleApiSetLimits() {
         server.send(200, "application/json", "{\"success\":true}");
     } else {
         server.send(400, "application/json", "{\"success\":false,\"error\":\"Invalid joint limit range\"}");
+    }
+}
+
+void WebServerController::handleApiSetSpeed() {
+    if (server.hasArg("s")) {
+        float spd = server.arg("s").toFloat();
+        robot.getServoController().setSpeed(spd);
+        server.send(200, "application/json", "{\"success\":true}");
+    } else {
+        server.send(400, "application/json", "{\"success\":false,\"error\":\"Missing s parameter\"}");
     }
 }
 

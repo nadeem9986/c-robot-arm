@@ -88,7 +88,7 @@
 // =========================================================================
 // 🚀 7. MOTION PROFILE & DUAL-CORE RTOS CONFIG
 // =========================================================================
-#define DEFAULT_MAX_SPEED_DPS 120.0f // Increased speed limit for responsive cantilever torque
+#define DEFAULT_MAX_SPEED_DPS 35.0f  // Default safe speed limit (35.0 deg/sec for smooth cantilever motion)
 #define MAX_TEACH_POSES       50     // Max keyframe positions for Teach & Repeat
 #define SYSTEM_RUN_DUAL_CORE  true   // Enable FreeRTOS Core 0 (Wi-Fi/Web) + Core 1 (Motion)
 

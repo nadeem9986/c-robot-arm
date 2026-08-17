@@ -21,6 +21,7 @@ private:
     void handleApiMoveIK();
     void handleApiTeach();
     void handleApiSetLimits();
+    void handleApiSetSpeed();
 
 public:
     WebServerController(RobotArm& robotArm, uint16_t port = WEB_SERVER_PORT);
