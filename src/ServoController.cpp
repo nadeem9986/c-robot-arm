@@ -50,6 +50,12 @@ uint16_t ServoController::angleToTicks(float angleDeg, uint8_t jointIndex) {
     // Constrain to physical limits
     calibratedAngle = constrain(calibratedAngle, joints[jointIndex].minAngle, joints[jointIndex].maxAngle);
 
+#if defined(REVERSE_J1_BASE_YAW) && REVERSE_J1_BASE_YAW
+    if (jointIndex == 0) {
+        calibratedAngle = 180.0f - calibratedAngle; // Invert J1 base rotation direction
+    }
+#endif
+
     // Map 0.0 - 180.0 degrees to SERVOMIN - SERVOMAX
     float ticks = SERVOMIN + (calibratedAngle / 180.0f) * (SERVOMAX - SERVOMIN);
     return (uint16_t)constrain(ticks, SERVOMIN, SERVOMAX);
@@ -71,7 +77,44 @@ void ServoController::setJointAngleDirect(uint8_t jointIndex, float angleDeg) {
 
 void ServoController::setJointTargetAngle(uint8_t jointIndex, float angleDeg) {
     if (jointIndex >= 4 || isEmergencyStopped) return;
+
+    // 1. Dynamic Coupled Limit Safety: When J2 is 15 degrees, J3 min angle is 85 degrees
+    if (jointIndex == 2) {
+        float currentJ2 = joints[1].currentAngle;
+        if (currentJ2 <= 15.5f && angleDeg < J3_MIN_DEG_AT_J2_MIN) {
+            angleDeg = J3_MIN_DEG_AT_J2_MIN;
+            Serial.printf("[SAFETY] J2 is at %.1f° -> Enforcing J3 coupled min limit of %.1f°!\n", currentJ2, J3_MIN_DEG_AT_J2_MIN);
+        }
+    } else if (jointIndex == 1) {
+        if (angleDeg <= 15.5f && joints[2].currentAngle < J3_MIN_DEG_AT_J2_MIN) {
+            setJointTargetAngle(2, J3_MIN_DEG_AT_J2_MIN);
+            Serial.printf("[SAFETY] Lowering J2 to 15° -> Automatically raising J3 to %.1f° to prevent mechanical collision!\n", J3_MIN_DEG_AT_J2_MIN);
+        }
+    }
+
     angleDeg = constrain(angleDeg, joints[jointIndex].minAngle, joints[jointIndex].maxAngle);
+
+    // 2. Anti-Jitter & Thermal Overheat Fail-Safe Detection
+#if ENABLE_ANTI_JITTER_SAFETY
+    unsigned long now = millis();
+    int8_t dir = (angleDeg > joints[jointIndex].currentAngle) ? 1 : ((angleDeg < joints[jointIndex].currentAngle) ? -1 : 0);
+
+    if (dir != 0 && dir != joints[jointIndex].lastDirection) {
+        if (now - joints[jointIndex].windowStartTimeMs > JITTER_WINDOW_MS) {
+            joints[jointIndex].windowStartTimeMs = now;
+            joints[jointIndex].reversalCount = 1;
+        } else {
+            joints[jointIndex].reversalCount++;
+            if (joints[jointIndex].reversalCount >= MAX_JITTER_REVERSALS_PER_SEC) {
+                joints[jointIndex].jitterWarning = true;
+                Serial.printf("[🚨 CRITICAL FAIL-SAFE] Rapid Jitter / Oscillation detected on Joint %d! Emergency stopping to prevent thermal burnout.\n", jointIndex + 1);
+                emergencyStop();
+                return;
+            }
+        }
+        joints[jointIndex].lastDirection = dir;
+    }
+#endif
 
     if (fabs(angleDeg - joints[jointIndex].targetAngle) > 0.05f) {
         joints[jointIndex].startAngle = joints[jointIndex].currentAngle;

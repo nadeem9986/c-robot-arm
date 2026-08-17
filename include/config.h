@@ -85,6 +85,17 @@
 #define LINK_FOREARM_L2      110.0f  // Forearm cantilever link length (mm)
 #define LINK_GRIPPER_L3       65.0f  // Gripper / tool length (mm)
 
+// Invert / Reverse Joint 1 Base Yaw Rotation Direction
+#define REVERSE_J1_BASE_YAW       true   // Set to true to invert J1 left/right base rotation
+
+// Dynamic Coupled Joint Limits (Prevents cantilever mechanical collisions)
+#define J3_MIN_DEG_AT_J2_MIN      85.0f  // When J2 = 15 deg, J3 min angle is strictly 85 deg!
+
+// Anti-Jitter & Thermal Overheat Protection Fail-Safe
+#define ENABLE_ANTI_JITTER_SAFETY true   // Auto-detect rapid servo oscillation/jitter to prevent thermal damage
+#define MAX_JITTER_REVERSALS_PER_SEC 8   // Max direction changes allowed per second before E-Stop protection triggers
+#define JITTER_WINDOW_MS          1000   // Time window (ms) for jitter evaluation
+
 // =========================================================================
 // 🚀 7. MOTION PROFILE & DUAL-CORE RTOS CONFIG
 // =========================================================================

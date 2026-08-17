@@ -17,6 +17,10 @@ struct JointState {
     bool enabled;
     unsigned long moveStartTimeMs;
     unsigned long moveDurationMs;
+    int8_t lastDirection;
+    uint8_t reversalCount;
+    unsigned long windowStartTimeMs;
+    bool jitterWarning;
 };
 
 class ServoController {
