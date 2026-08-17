@@ -63,7 +63,7 @@
 #define J2_MAX_DEG           165.0f
 #define J2_DEFAULT_DEG       90.0f
 
-#define J3_MIN_DEG           10.0f
+#define J3_MIN_DEG           50.0f
 #define J3_MAX_DEG           170.0f
 #define J3_DEFAULT_DEG       90.0f
 

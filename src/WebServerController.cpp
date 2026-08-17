@@ -528,12 +528,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <!-- JOINT 3 -->
             <div class="control-item">
                 <div class="control-label">
-                    <span>J3: FOREARM PARALLEL BAR <span class="limit-subtext" id="j3-limit-tag">(10° - 170°)</span></span>
+                    <span>J3: FOREARM PARALLEL BAR <span class="limit-subtext" id="j3-limit-tag">(50° - 170°)</span></span>
                     <span class="value-tag" id="j3-val">90°</span>
                 </div>
                 <div class="range-wrapper">
                     <button class="step-btn" onclick="stepJoint('j3', -2)">-</button>
-                    <input type="range" id="j3" min="10" max="170" value="90" oninput="onSliderChange()">
+                    <input type="range" id="j3" min="50" max="170" value="90" oninput="onSliderChange()">
                     <button class="step-btn" onclick="stepJoint('j3', 2)">+</button>
                 </div>
             </div>
@@ -602,7 +602,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                     </tr>
                     <tr>
                         <td style="color:var(--accent-emerald); font-weight:600;">J3 Elbow Bar</td>
-                        <td><input type="number" id="l-j3-min" value="10" min="0" max="180"></td>
+                        <td><input type="number" id="l-j3-min" value="50" min="0" max="180"></td>
                         <td><input type="number" id="l-j3-max" value="170" min="0" max="180"></td>
                         <td><input type="number" id="l-j3-off" value="0" min="-30" max="30"></td>
                     </tr>
@@ -952,7 +952,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         function resetServoLimits() {
             document.getElementById('l-j1-min').value = 0; document.getElementById('l-j1-max').value = 180; document.getElementById('l-j1-off').value = 0;
             document.getElementById('l-j2-min').value = 15; document.getElementById('l-j2-max').value = 165; document.getElementById('l-j2-off').value = 0;
-            document.getElementById('l-j3-min').value = 10; document.getElementById('l-j3-max').value = 170; document.getElementById('l-j3-off').value = 0;
+            document.getElementById('l-j3-min').value = 50; document.getElementById('l-j3-max').value = 170; document.getElementById('l-j3-off').value = 0;
             document.getElementById('l-j4-min').value = 0; document.getElementById('l-j4-max').value = 17; document.getElementById('l-j4-off').value = 0;
             saveServoLimits();
         }
