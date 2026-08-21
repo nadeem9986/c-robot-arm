@@ -1,0 +1,5 @@
+Single clean robot model created
+OBJ: C:\Users\nad\Desktop\c-robot-arm\cad\converted_viewer_meshes\RobotArm_Single_Clean_Model.obj
+FreeCAD: C:\Users\nad\Desktop\c-robot-arm\cad\converted_viewer_meshes\RobotArm_Single_Clean_Model.FCStd
+Combined input parts: 39
+Removed fastener/hardware files matching: ANSI_, Forged_
