@@ -1,0 +1,45 @@
+Inventor to STEP conversion attempt using FreeCAD
+Source: C:\Users\nad\Desktop\c-robot-arm\cad\models
+Output: C:\Users\nad\Desktop\c-robot-arm\cad\converted
+
+FAIL ANSI B 18.2.4.1 M - M3 x 0.5Style 1.ipt: no supported file format
+FAIL ANSI B18.3.4M - M3 x 0.5 x 12(1).ipt: no supported file format
+FAIL ANSI B18.3.4M - M3 x 0.5 x 6(1).ipt: no supported file format
+FAIL ANSI B18.3.4M - M3 x 0.5 x 8(1).ipt: no supported file format
+FAIL ANSI B18.6.5M - M2.5x0.45 x 4(38).ipt: no supported file format
+FAIL ANSI B18.6.5M - M2.5x0.45 x 8(38).ipt: no supported file format
+FAIL Assembly1.iam: no supported file format
+FAIL Assembly2.iam: no supported file format
+FAIL Assembly3.iam: no supported file format
+FAIL Assembly4.iam: no supported file format
+FAIL Assembly5.iam: no supported file format
+FAIL Part1.ipt: no supported file format
+FAIL Part11.ipt: no supported file format
+FAIL Part12.ipt: no supported file format
+FAIL Part13.ipt: no supported file format
+FAIL Part14.ipt: no supported file format
+FAIL Part15.ipt: no supported file format
+FAIL Part16.ipt: no supported file format
+FAIL Part17.ipt: no supported file format
+FAIL Part18.ipt: no supported file format
+FAIL Part19.ipt: no supported file format
+FAIL Part2.ipt: no supported file format
+FAIL Part20.ipt: no supported file format
+FAIL Part21.ipt: no supported file format
+FAIL Part22.ipt: no supported file format
+FAIL Part23.ipt: no supported file format
+FAIL Part24.ipt: no supported file format
+FAIL Part25.ipt: no supported file format
+FAIL Part26.ipt: no supported file format
+FAIL Part3.ipt: no supported file format
+FAIL Part4.ipt: no supported file format
+FAIL Part5.ipt: no supported file format
+FAIL Part6.ipt: no supported file format
+FAIL Part7.ipt: no supported file format
+FAIL Part8.ipt: no supported file format
+FAIL Part9.ipt: no supported file format
+FAIL SG90.ipt: no supported file format
+FAIL SG90Horn1.ipt: no supported file format
+FAIL SG90Horn2.ipt: no supported file format
+
+Converted 0 of 39 files.
