@@ -1,0 +1,44 @@
+Clean FreeCAD mesh assembly created
+Output: C:\Users\nad\Desktop\c-robot-arm\cad\converted_viewer_meshes\RobotArm_Clean_Mesh_Assembly.FCStd
+Skipped fasteners and duplicate hardware labels matching: ANSI_, Forged_
+Imported OBJ files: 39
+
+003_Part7.obj
+004_Part1.obj
+005_Part3.obj
+006_Part4.obj
+007_Part4.obj
+008_Part8.obj
+009_SG90.obj
+012_Part16.obj
+013_Part26.obj
+014_Part4.obj
+023_Part24.obj
+024_Part24.obj
+045_Part14.obj
+046_Part5.obj
+047_Part6.obj
+048_SG90Horn1.obj
+065_Part12.obj
+066_SG90.obj
+067_Part11.obj
+068_Part1.obj
+069_Part13.obj
+070_Part13.obj
+071_SG90.obj
+072_Part1.obj
+073_Part9.obj
+074_SG90Horn2.obj
+078_Part15.obj
+130_Part2.obj
+131_SG90Horn1.obj
+138_SG90.obj
+139_Part17.obj
+140_Part19.obj
+141_Part18.obj
+142_Part20.obj
+143_Part21.obj
+144_Part22.obj
+145_Part23.obj
+146_SG90Horn1.obj
+149_Part25.obj

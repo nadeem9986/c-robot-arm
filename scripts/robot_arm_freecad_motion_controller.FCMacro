@@ -1,0 +1,210 @@
+import math
+
+import FreeCAD as App
+import FreeCADGui as Gui
+from PySide import QtCore, QtGui
+
+
+LIMITS = {
+    "j1": (0, 180, 90),
+    "j2": (15, 165, 90),
+    "j3": (50, 170, 90),
+    "j4": (0, 17, 10),
+}
+
+# Approximate pivots from the Autodesk Viewer model coordinates, in millimeters.
+# Coordinate system: Y is up, X is side-to-side, Z is forward/back.
+PIVOTS = {
+    "j1": App.Vector(0, 0, 0),
+    "j2": App.Vector(0, -30, 18),
+    "j3": App.Vector(0, 15, -10),
+    "j4_left": App.Vector(-8, 14, -92),
+    "j4_right": App.Vector(8, 14, -92),
+}
+
+AXES = {
+    "j1": App.Vector(0, 1, 0),
+    "j2": App.Vector(1, 0, 0),
+    "j3": App.Vector(1, 0, 0),
+    "j4_left": App.Vector(0, 1, 0),
+    "j4_right": App.Vector(0, 1, 0),
+}
+
+
+def active_doc():
+    doc = App.ActiveDocument
+    if doc is None:
+        raise RuntimeError("Open RobotArm_Mesh_Assembly.FCStd first.")
+    return doc
+
+
+def label(obj):
+    return str(getattr(obj, "Label", obj.Name))
+
+
+def mesh_objects(doc):
+    return [obj for obj in doc.Objects if hasattr(obj, "Mesh")]
+
+
+def bbox_center(obj):
+    box = obj.Mesh.BoundBox
+    return App.Vector(
+        (box.XMin + box.XMax) * 0.5,
+        (box.YMin + box.YMax) * 0.5,
+        (box.ZMin + box.ZMax) * 0.5,
+    )
+
+
+def make_rotation(center, axis, angle_deg):
+    return App.Placement(App.Vector(0, 0, 0), App.Rotation(axis, angle_deg), center)
+
+
+def classify(obj):
+    name = label(obj)
+    center = bbox_center(obj)
+
+    if name == "Part7":
+        return "base"
+
+    # Gripper/claw objects are at the far negative-Z end of the model.
+    if center.z < -52:
+        if center.x < 0:
+            return "claw_left"
+        if center.x > 0:
+            return "claw_right"
+        return "wrist"
+
+    # Upper arm and linkage pieces above the shoulder.
+    if center.y > -20 or center.z < 5:
+        return "arm"
+
+    return "turntable"
+
+
+class RobotArmMotionPanel(QtGui.QDialog):
+    def __init__(self):
+        super(RobotArmMotionPanel, self).__init__()
+        self.setWindowTitle("Robot Arm Mesh Motion Controller")
+        self.resize(420, 260)
+
+        self.doc = active_doc()
+        self.objects = mesh_objects(self.doc)
+        self.original = {obj.Name: App.Placement(obj.Placement) for obj in self.objects}
+        self.kinds = {obj.Name: classify(obj) for obj in self.objects}
+        self.values = {key: default for key, (_, _, default) in LIMITS.items()}
+
+        layout = QtGui.QVBoxLayout(self)
+
+        info = QtGui.QLabel(
+            "This rigs the imported mesh model with approximate servo pivots.\n"
+            "Use it for visual movement in FreeCAD, not precision assembly constraints."
+        )
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        self.readouts = {}
+        for key, title in [
+            ("j1", "J1 Base Yaw"),
+            ("j2", "J2 Shoulder"),
+            ("j3", "J3 Linkage"),
+            ("j4", "J4 Gripper"),
+        ]:
+            lo, hi, default = LIMITS[key]
+            row = QtGui.QHBoxLayout()
+            text = QtGui.QLabel(title)
+            text.setMinimumWidth(100)
+            slider = QtGui.QSlider(QtCore.Qt.Horizontal)
+            slider.setMinimum(lo)
+            slider.setMaximum(hi)
+            slider.setValue(default)
+            readout = QtGui.QLabel(f"{default} deg")
+            readout.setMinimumWidth(60)
+            slider.valueChanged.connect(lambda value, joint=key: self.set_joint(joint, value))
+            row.addWidget(text)
+            row.addWidget(slider)
+            row.addWidget(readout)
+            layout.addLayout(row)
+            self.readouts[key] = readout
+
+        buttons = QtGui.QHBoxLayout()
+        home = QtGui.QPushButton("Home")
+        rest = QtGui.QPushButton("Rest")
+        show_all = QtGui.QPushButton("Show All")
+        reset = QtGui.QPushButton("Reset Mesh")
+        home.clicked.connect(lambda: self.set_pose(90, 90, 90, 10))
+        rest.clicked.connect(lambda: self.set_pose(90, 30, 50, 0))
+        show_all.clicked.connect(self.show_all)
+        reset.clicked.connect(self.reset_mesh)
+        buttons.addWidget(home)
+        buttons.addWidget(rest)
+        buttons.addWidget(show_all)
+        buttons.addWidget(reset)
+        layout.addLayout(buttons)
+
+        self.show_all()
+        self.apply_pose()
+
+    def set_joint(self, joint, value):
+        self.values[joint] = int(value)
+        if self.values["j2"] <= 15 and self.values["j3"] < 85:
+            self.values["j3"] = 85
+        for key, readout in self.readouts.items():
+            readout.setText(f"{self.values[key]} deg")
+        self.apply_pose()
+
+    def set_pose(self, j1, j2, j3, j4):
+        self.values.update({"j1": j1, "j2": j2, "j3": j3, "j4": j4})
+        self.apply_pose()
+        for key, readout in self.readouts.items():
+            readout.setText(f"{self.values[key]} deg")
+
+    def reset_mesh(self):
+        self.values = {key: default for key, (_, _, default) in LIMITS.items()}
+        for obj in self.objects:
+            obj.Placement = self.original[obj.Name]
+        self.apply_pose()
+
+    def show_all(self):
+        for obj in self.objects:
+            obj.Visibility = True
+            if hasattr(obj, "ViewObject") and obj.ViewObject:
+                obj.ViewObject.Visibility = True
+        Gui.SendMsgToActiveView("ViewFit")
+        Gui.updateGui()
+
+    def transform_for(self, kind):
+        j1_delta = self.values["j1"] - 90
+        j2_delta = self.values["j2"] - 90
+        j3_delta = self.values["j3"] - 90
+        j4_open = self.values["j4"]
+
+        t_j1 = make_rotation(PIVOTS["j1"], AXES["j1"], j1_delta)
+        t_j2 = make_rotation(PIVOTS["j2"], AXES["j2"], j2_delta)
+        t_j3 = make_rotation(PIVOTS["j3"], AXES["j3"], j3_delta)
+        t_l = make_rotation(PIVOTS["j4_left"], AXES["j4_left"], -j4_open)
+        t_r = make_rotation(PIVOTS["j4_right"], AXES["j4_right"], j4_open)
+
+        if kind == "base":
+            return App.Placement()
+        if kind == "turntable":
+            return t_j1
+        if kind == "arm":
+            return t_j1.multiply(t_j2)
+        if kind == "wrist":
+            return t_j1.multiply(t_j2).multiply(t_j3)
+        if kind == "claw_left":
+            return t_j1.multiply(t_j2).multiply(t_j3).multiply(t_l)
+        if kind == "claw_right":
+            return t_j1.multiply(t_j2).multiply(t_j3).multiply(t_r)
+        return t_j1
+
+    def apply_pose(self):
+        for obj in self.objects:
+            kind = self.kinds.get(obj.Name, "turntable")
+            obj.Placement = self.transform_for(kind).multiply(self.original[obj.Name])
+        self.doc.recompute()
+        Gui.updateGui()
+
+
+panel = RobotArmMotionPanel()
+panel.show()
