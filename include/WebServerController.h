@@ -16,6 +16,7 @@ private:
 
     void setupRoutes();
     void handleRoot();
+    void handleModelPage();
     void handleApiStatus();
     void handleApiMoveJoints();
     void handleApiMoveIK();

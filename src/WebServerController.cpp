@@ -1147,6 +1147,563 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
+const char MODEL_HTML[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Robot Arm Model Control</title>
+    <style>
+        :root {
+            --bg: #10131a;
+            --panel: #171c25;
+            --panel-2: #202633;
+            --line: #323b4d;
+            --text: #f4f7fb;
+            --muted: #9ca8ba;
+            --cyan: #36c5f0;
+            --green: #4ade80;
+            --red: #f87171;
+            --amber: #fbbf24;
+            --metal: #d9dde5;
+            --servo: #1596c7;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 340px;
+            overflow: hidden;
+        }
+
+        .viewer {
+            position: relative;
+            min-width: 0;
+            background: #eef1f5;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            touch-action: none;
+            cursor: grab;
+        }
+
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        .hud {
+            position: absolute;
+            left: 16px;
+            top: 16px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            color: #10131a;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .pill {
+            border: 1px solid rgba(16, 19, 26, 0.12);
+            background: rgba(255, 255, 255, 0.78);
+            padding: 7px 10px;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+        }
+
+        aside {
+            border-left: 1px solid var(--line);
+            background: var(--panel);
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        h1 {
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .sub {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+
+        .status {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .metric {
+            background: var(--panel-2);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .metric span {
+            display: block;
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .metric strong {
+            font-size: 15px;
+        }
+
+        .joint {
+            border-top: 1px solid var(--line);
+            padding: 14px 0;
+        }
+
+        .joint label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .joint output {
+            color: var(--cyan);
+            font-family: Consolas, monospace;
+            font-size: 14px;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: var(--cyan);
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        button {
+            border: 1px solid var(--line);
+            background: var(--panel-2);
+            color: var(--text);
+            min-height: 38px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button:hover {
+            border-color: var(--cyan);
+        }
+
+        .primary {
+            background: #075985;
+            border-color: var(--cyan);
+        }
+
+        .danger {
+            background: #7f1d1d;
+            border-color: var(--red);
+        }
+
+        .toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-2);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 14px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .toggle input {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--green);
+        }
+
+        .limits {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.6;
+            border-top: 1px solid var(--line);
+            padding-top: 14px;
+            margin-top: 16px;
+        }
+
+        @media (max-width: 780px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: 55vh 45vh;
+                overflow: auto;
+            }
+
+            aside {
+                border-left: 0;
+                border-top: 1px solid var(--line);
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="viewer">
+        <canvas id="scene"></canvas>
+        <div class="hud">
+            <div class="pill" id="link-state">Disconnected</div>
+            <div class="pill" id="tip-state">X 0 | Y 0 | Z 0</div>
+        </div>
+    </main>
+
+    <aside>
+        <h1>Virtual Arm Control</h1>
+        <p class="sub">Move the model. When live link is enabled, the physical arm receives the same joint targets through the ESP32 API.</p>
+
+        <div class="toggle">
+            <span>Live link to physical arm</span>
+            <input id="live-link" type="checkbox" checked>
+        </div>
+
+        <div class="status">
+            <div class="metric"><span>Motion</span><strong id="motion">READY</strong></div>
+            <div class="metric"><span>E-stop</span><strong id="estop">CLEAR</strong></div>
+            <div class="metric"><span>Speed</span><strong id="speed">35 deg/s</strong></div>
+            <div class="metric"><span>Plate</span><strong>2.8 mm</strong></div>
+        </div>
+
+        <section class="joint">
+            <label for="j1">J1 Base Yaw <output id="j1-out">90 deg</output></label>
+            <input id="j1" type="range" min="0" max="180" value="90" step="1">
+        </section>
+
+        <section class="joint">
+            <label for="j2">J2 Shoulder <output id="j2-out">90 deg</output></label>
+            <input id="j2" type="range" min="15" max="165" value="90" step="1">
+        </section>
+
+        <section class="joint">
+            <label for="j3">J3 Linkage <output id="j3-out">90 deg</output></label>
+            <input id="j3" type="range" min="50" max="170" value="90" step="1">
+        </section>
+
+        <section class="joint">
+            <label for="j4">J4 Gripper <output id="j4-out">10 deg</output></label>
+            <input id="j4" type="range" min="0" max="17" value="10" step="1">
+        </section>
+
+        <div class="row">
+            <button class="primary" onclick="preset(90,90,90,10)">Home</button>
+            <button onclick="preset(90,30,50,0)">Rest</button>
+            <button onclick="setJoint('j4',0)">Open</button>
+            <button onclick="setJoint('j4',17)">Close</button>
+            <button class="danger" onclick="cmd('ESTOP')">E-stop</button>
+            <button onclick="cmd('RESET_ESTOP')">Reset</button>
+        </div>
+
+        <div class="limits">
+            <strong>Model dimensions</strong><br>
+            Base plate: 95 x 144 mm<br>
+            Link model: L0 85 mm, L1 120 mm, L2 110 mm, L3 65 mm<br>
+            Limits: J1 0-180, J2 15-165, J3 50-170, J4 0-17 deg<br>
+            Coupled rule: near J2 15 deg, J3 should stay at least 85 deg.
+        </div>
+    </aside>
+
+    <script>
+        const canvas = document.getElementById('scene');
+        const ctx = canvas.getContext('2d');
+        const ids = ['j1', 'j2', 'j3', 'j4'];
+        const state = { j1: 90, j2: 90, j3: 90, j4: 10, speed: 35, moving: false, estop: false };
+        const limits = {
+            j1: [0, 180],
+            j2: [15, 165],
+            j3: [50, 170],
+            j4: [0, 17]
+        };
+        const dims = { baseW: 95, baseD: 144, l0: 85, l1: 120, l2: 110, l3: 65, halfGap: 12 };
+        let yawView = -38 * Math.PI / 180;
+        let pitchView = 24 * Math.PI / 180;
+        let dragging = false;
+        let lastPointer = null;
+        let lastSend = 0;
+
+        function deg(v) { return v * Math.PI / 180; }
+        function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+        function resize() {
+            const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = Math.max(1, Math.round(rect.width * dpr));
+            canvas.height = Math.max(1, Math.round(rect.height * dpr));
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            draw();
+        }
+
+        function project(p) {
+            const cy = Math.cos(yawView), sy = Math.sin(yawView);
+            const cp = Math.cos(pitchView), sp = Math.sin(pitchView);
+            const x1 = p.x * cy - p.z * sy;
+            const z1 = p.x * sy + p.z * cy;
+            const y1 = p.y * cp - z1 * sp;
+            const scale = Math.min(canvas.clientWidth / 280, canvas.clientHeight / 245);
+            return {
+                x: canvas.clientWidth * 0.52 + x1 * scale,
+                y: canvas.clientHeight * 0.72 - y1 * scale
+            };
+        }
+
+        function armPoints(sideOffset) {
+            const baseYaw = deg(state.j1 - 90);
+            const j2 = deg(state.j2);
+            const j3 = deg(state.j3);
+            const sx = sideOffset * Math.cos(baseYaw + Math.PI / 2);
+            const sz = sideOffset * Math.sin(baseYaw + Math.PI / 2);
+            const fx = Math.sin(baseYaw);
+            const fz = Math.cos(baseYaw);
+            const shoulder = { x: sx, y: dims.l0, z: sz };
+            const elbow = {
+                x: shoulder.x + fx * dims.l1 * Math.cos(j2),
+                y: shoulder.y + dims.l1 * Math.sin(j2),
+                z: shoulder.z + fz * dims.l1 * Math.cos(j2)
+            };
+            const wrist = {
+                x: elbow.x + fx * dims.l2 * Math.cos(j3),
+                y: elbow.y + dims.l2 * Math.sin(j3),
+                z: elbow.z + fz * dims.l2 * Math.cos(j3)
+            };
+            const tip = {
+                x: wrist.x + fx * dims.l3,
+                y: wrist.y,
+                z: wrist.z + fz * dims.l3
+            };
+            return { shoulder, elbow, wrist, tip };
+        }
+
+        function line(a, b, color, width) {
+            const pa = project(a), pb = project(b);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(pa.x, pa.y);
+            ctx.lineTo(pb.x, pb.y);
+            ctx.stroke();
+        }
+
+        function node(p, color, r) {
+            const q = project(p);
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(q.x, q.y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function plate() {
+            const w = dims.baseW / 2, d = dims.baseD / 2;
+            const pts = [
+                {x:-w,y:0,z:-d}, {x:w,y:0,z:-d},
+                {x:w,y:0,z:d}, {x:-w,y:0,z:d}
+            ];
+            const p = pts.map(project);
+            ctx.fillStyle = '#d9dde5';
+            ctx.strokeStyle = '#a8b0bd';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(p[0].x, p[0].y);
+            for (let i = 1; i < p.length; i++) ctx.lineTo(p[i].x, p[i].y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        function drawServo(center, w, h, color) {
+            const p = project(center);
+            ctx.fillStyle = color;
+            ctx.strokeStyle = '#0d6688';
+            ctx.lineWidth = 2;
+            ctx.fillRect(p.x - w / 2, p.y - h / 2, w, h);
+            ctx.strokeRect(p.x - w / 2, p.y - h / 2, w, h);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+            plate();
+            const left = armPoints(-dims.halfGap);
+            const right = armPoints(dims.halfGap);
+            const center = armPoints(0);
+
+            line({x:0,y:0,z:0}, {x:0,y:dims.l0,z:0}, '#6b7280', 8);
+            drawServo({x:0,y:18,z:0}, 34, 28, '#1596c7');
+
+            line(left.shoulder, left.elbow, '#d9dde5', 9);
+            line(right.shoulder, right.elbow, '#d9dde5', 9);
+            line(left.elbow, left.wrist, '#d9dde5', 8);
+            line(right.elbow, right.wrist, '#d9dde5', 8);
+            line(left.shoulder, right.shoulder, '#9ca3af', 4);
+            line(left.elbow, right.elbow, '#9ca3af', 4);
+            line(left.wrist, right.wrist, '#9ca3af', 4);
+
+            const rearTop = { x: -dims.halfGap, y: dims.l0 + 70, z: -42 };
+            const rearBottom = { x: -dims.halfGap, y: dims.l0 - 8, z: -38 };
+            line(rearBottom, rearTop, '#cfd4dc', 7);
+            line(rearTop, left.elbow, '#cfd4dc', 5);
+
+            line(center.wrist, center.tip, '#f87171', 7);
+            const open = state.j4 / 17;
+            line(center.tip, {x:center.tip.x - 10 - open * 18, y:center.tip.y - 8, z:center.tip.z + 18}, '#f87171', 5);
+            line(center.tip, {x:center.tip.x + 10 + open * 18, y:center.tip.y - 8, z:center.tip.z + 18}, '#f87171', 5);
+
+            [left.shoulder, right.shoulder, left.elbow, right.elbow, left.wrist, right.wrist, center.tip].forEach(p => node(p, '#6b7280', 5));
+            drawServo({x:-34,y:dims.l0-18,z:0}, 34, 24, '#1596c7');
+            drawServo({x:34,y:dims.l0-18,z:0}, 34, 24, '#1596c7');
+            drawServo(center.wrist, 25, 20, '#1596c7');
+
+            document.getElementById('tip-state').textContent =
+                'X ' + center.tip.x.toFixed(0) + ' | Y ' + center.tip.y.toFixed(0) + ' | Z ' + center.tip.z.toFixed(0);
+        }
+
+        function updateLabels() {
+            ids.forEach(id => {
+                document.getElementById(id).value = Math.round(state[id]);
+                document.getElementById(id + '-out').textContent = Math.round(state[id]) + ' deg';
+            });
+            document.getElementById('motion').textContent = state.moving ? 'MOVING' : 'READY';
+            document.getElementById('estop').textContent = state.estop ? 'ACTIVE' : 'CLEAR';
+            document.getElementById('speed').textContent = Math.round(state.speed) + ' deg/s';
+            document.getElementById('link-state').textContent =
+                document.getElementById('live-link').checked ? 'Live link on' : 'Virtual only';
+        }
+
+        function applyCoupledLimit() {
+            if (state.j2 <= 15.5 && state.j3 < 85) state.j3 = 85;
+        }
+
+        function sendPose(force) {
+            if (!document.getElementById('live-link').checked && !force) return;
+            const now = Date.now();
+            if (!force && now - lastSend < 60) return;
+            lastSend = now;
+            const q = '?j1=' + state.j1 + '&j2=' + state.j2 + '&j3=' + state.j3 + '&j4=' + state.j4 + '&direct=0';
+            fetch('/api/move' + q)
+                .then(() => document.getElementById('link-state').textContent = 'Command sent')
+                .catch(() => document.getElementById('link-state').textContent = 'Link failed');
+        }
+
+        function setJoint(id, value) {
+            state[id] = clamp(Number(value), limits[id][0], limits[id][1]);
+            applyCoupledLimit();
+            updateLabels();
+            draw();
+            sendPose(true);
+        }
+
+        function preset(j1, j2, j3, j4) {
+            state.j1 = j1;
+            state.j2 = j2;
+            state.j3 = j3;
+            state.j4 = j4;
+            applyCoupledLimit();
+            updateLabels();
+            draw();
+            sendPose(true);
+        }
+
+        function cmd(name) {
+            fetch('/api/cmd?c=' + encodeURIComponent(name)).then(fetchStatus);
+        }
+
+        function fetchStatus() {
+            fetch('/api/status')
+                .then(r => r.json())
+                .then(data => {
+                    state.j1 = data.j1;
+                    state.j2 = data.j2;
+                    state.j3 = data.j3;
+                    state.j4 = data.j4;
+                    state.speed = data.speed || state.speed;
+                    state.moving = !!data.isMoving;
+                    state.estop = !!data.isEStopped;
+                    ids.forEach(id => {
+                        const min = data[id + '_min'];
+                        const max = data[id + '_max'];
+                        if (min !== undefined && max !== undefined) {
+                            limits[id] = [min, max];
+                            document.getElementById(id).min = min;
+                            document.getElementById(id).max = max;
+                        }
+                    });
+                    updateLabels();
+                    draw();
+                })
+                .catch(() => document.getElementById('link-state').textContent = 'Status offline');
+        }
+
+        ids.forEach(id => {
+            document.getElementById(id).addEventListener('input', ev => {
+                state[id] = Number(ev.target.value);
+                applyCoupledLimit();
+                updateLabels();
+                draw();
+                sendPose(false);
+            });
+            document.getElementById(id).addEventListener('change', () => sendPose(true));
+        });
+
+        canvas.addEventListener('pointerdown', ev => {
+            dragging = true;
+            lastPointer = { x: ev.clientX, y: ev.clientY };
+            canvas.setPointerCapture(ev.pointerId);
+        });
+
+        canvas.addEventListener('pointermove', ev => {
+            if (!dragging || !lastPointer) return;
+            yawView += (ev.clientX - lastPointer.x) * 0.008;
+            pitchView = clamp(pitchView + (ev.clientY - lastPointer.y) * 0.006, -0.35, 1.15);
+            lastPointer = { x: ev.clientX, y: ev.clientY };
+            draw();
+        });
+
+        canvas.addEventListener('pointerup', ev => {
+            dragging = false;
+            lastPointer = null;
+            canvas.releasePointerCapture(ev.pointerId);
+        });
+
+        window.addEventListener('resize', resize);
+        document.getElementById('live-link').addEventListener('change', updateLabels);
+        resize();
+        fetchStatus();
+        setInterval(fetchStatus, 2000);
+    </script>
+</body>
+</html>
+)rawliteral";
+
 WebServerController::WebServerController(RobotArm& robotArm, uint16_t port)
     : server(port), robot(robotArm), apMode(true) {}
 
@@ -1198,6 +1755,7 @@ void WebServerController::begin(bool useStationMode, const char* staSSID, const 
 
 void WebServerController::setupRoutes() {
     server.on("/", HTTP_GET, std::bind(&WebServerController::handleRoot, this));
+    server.on("/model", HTTP_GET, std::bind(&WebServerController::handleModelPage, this));
     server.on("/api/status", HTTP_GET, std::bind(&WebServerController::handleApiStatus, this));
     server.on("/api/move", HTTP_GET, std::bind(&WebServerController::handleApiMoveJoints, this));
     server.on("/api/ik", HTTP_GET, std::bind(&WebServerController::handleApiMoveIK, this));
@@ -1216,6 +1774,10 @@ void WebServerController::setupRoutes() {
 
 void WebServerController::handleRoot() {
     server.send_P(200, "text/html", INDEX_HTML);
+}
+
+void WebServerController::handleModelPage() {
+    server.send_P(200, "text/html", MODEL_HTML);
 }
 
 void WebServerController::handleApiStatus() {
