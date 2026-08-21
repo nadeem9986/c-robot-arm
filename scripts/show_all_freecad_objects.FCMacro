@@ -1,0 +1,16 @@
+import FreeCAD
+
+doc = FreeCAD.ActiveDocument
+
+if doc is None:
+    raise RuntimeError("No active FreeCAD document is open.")
+
+for obj in doc.Objects:
+    obj.Visibility = True
+    if hasattr(obj, "ViewObject") and obj.ViewObject is not None:
+        obj.ViewObject.Visibility = True
+
+FreeCAD.Gui.SendMsgToActiveView("ViewFit")
+FreeCAD.Gui.updateGui()
+
+print("All objects are now visible.")
