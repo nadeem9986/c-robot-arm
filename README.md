@@ -13,7 +13,7 @@
 >   - **Core 0**: Wi-Fi Stack, Web Server & REST/JSON API (`webServerTask`, Prio 1).
 >   - **Core 1**: 100Hz Real-Time Trajectory Engine & PWM Hardware Driver (`motionControlTask`, Prio 2).
 > - **Kinematic Model**: MeArm 4-Bar Parallel Linkage ($L_0=50\text{mm}, L_1=110\text{mm}, L_2=100\text{mm}, L_3=50\text{mm}$). $J_3$ angle is ground-referenced. Top parallel rod keeps wrist platform level.
-> - **Wi-Fi Config**: Station Mode (`SSID: "AMANAT"`, `Pass: "amanath@123"`). AP Fallback (`ESP32-RobotArm` / `robot1234`).
+> - **Wi-Fi Config**: Station Mode (`SSID: "YOUR_WIFI_SSID"`, `Pass: "YOUR_WIFI_PASSWORD"` - set your own in `include/config.h`). AP Fallback (`ESP32-RobotArm` / `robot1234`).
 > - **Boot Mode**: `ENABLE_AUTO_HOME_ON_BOOT false` (Passive mode: zero movement on startup until commanded).
 > - **Web UI**: Embedded HTML5/CSS Glassmorphic Industrial Console with live telemetry & micro-stepping controls.
 > - **Build & Flash**: `python -m platformio run --target upload --upload-port COM4`
