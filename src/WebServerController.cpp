@@ -483,9 +483,9 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <span class="brand-badge">INDUSTRIAL CONTROL</span>
         </div>
         <div class="telemetry-group">
-            <span>IP: <strong id="net-ip" style="color:var(--accent-cyan);">192.168.31.174</strong></span>
+            <span>IP: <strong id="net-ip" style="color:var(--accent-cyan);">YOUR_LOCAL_IP</strong></span>
             <span>|</span>
-            <span>MODE: <strong id="net-mode" style="color:var(--accent-emerald);">STATION (AMANAT)</strong></span>
+            <span>MODE: <strong id="net-mode" style="color:var(--accent-emerald);">STATION (YOUR_WIFI_NAME)</strong></span>
         </div>
     </div>
 
